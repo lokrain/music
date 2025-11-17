@@ -1,4 +1,4 @@
-use music_core::{systems::JustIntonation, PitchSystem};
+use music_core::{PitchSystem, systems::JustIntonation};
 
 #[test]
 fn major_third_uses_just_ratio() {

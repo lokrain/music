@@ -26,12 +26,17 @@
 
 extern crate alloc;
 
+pub mod interval;
 pub mod pitch;
 pub mod prelude;
 pub mod registry;
+pub mod scale;
 pub mod system;
 pub mod systems;
 
-pub use pitch::{AbstractPitch, DEFAULT_FREQUENCY_EPSILON, Pitch, PitchError, PitchLabel};
-pub use registry::{RegistryInsertError, TuningError, TuningRegistry};
-pub use system::{EqualTemperament, PitchSystem, PitchSystemId, PitchSystemIdError};
+pub use interval::*;
+pub use pitch::*;
+pub use registry::*;
+pub use scale::*;
+pub use system::*;
+pub use systems::*;

@@ -1,4 +1,4 @@
-use music_core::{systems::CentsScale, PitchSystem};
+use music_core::{PitchSystem, systems::CentsScale};
 
 #[test]
 fn quarter_tone_matches_expected_ratio() {

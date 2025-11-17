@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
 use music_core::{
-    AbstractPitch, Pitch, PitchError, PitchSystem, PitchSystemId, TuningRegistry,
+    AbstractPitch, Pitch, PitchSystem, PitchSystemId, TuningRegistry,
+    pitch::PitchError,
     systems::{TwelveTET, TwentyFourTET},
 };
 
