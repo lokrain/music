@@ -1,0 +1,16 @@
+[profile.default]
+fail-fast = false
+status-level = "pass"
+retries = 0
+slow-time = "120s"
+
+[profile.ci]
+fail-fast = false
+status-level = "pass"
+retries = 0
+slow-time = "240s"
+run-ignored = "never"
+
+[store]
+fail-output = "immediate"
+archive = "local"

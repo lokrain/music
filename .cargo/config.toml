@@ -1,0 +1,8 @@
+[build]
+rustflags = ["-Ctarget-cpu=native"]
+
+[target.'cfg(all())']
+rustflags = ["-Dwarnings"]
+
+[env]
+RUST_BACKTRACE = "1"

@@ -1,0 +1,12 @@
+[llvm-cov]
+output-dir = "target/coverage"
+ignore-filename-regex = [".*/target/.*"]
+html = true
+open = false
+
+[report]
+fail-under-lines = 95
+fail-under-regions = 95
+
+[workspace]
+default-members = ["crates/music-core", "crates/music-engine", "crates/music-cli", "crates/music-theory", "crates/music-signal-core", "crates/music-analysis", "crates/music-ffi", "crates/music-playground"]

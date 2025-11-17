@@ -1,0 +1,56 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo nextest (workspace)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "nextest",
+                "run",
+                "--workspace",
+                "--all-features"
+            ],
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cargo bench (music-core)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "bench",
+                "-p",
+                "music-core",
+                "--bench",
+                "pitch_bench"
+            ],
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "cargo llvm-cov (workspace)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "llvm-cov",
+                "--workspace",
+                "--all-features",
+                "--lcov",
+                "--fail-under-lines",
+                "95"
+            ],
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "test"
+        }
+    ]
+}

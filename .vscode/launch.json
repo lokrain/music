@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "App: music-cli (cargo run)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "cargo run -p music-cli --bin music-cli",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "QA: cargo nextest (workspace)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "cargo nextest run --workspace --all-features",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Perf: cargo bench (music-core)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "cargo bench -p music-core --bench pitch_bench",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Coverage: cargo llvm-cov (workspace)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "cargo llvm-cov --workspace --all-features --fail-under-lines 95 --html",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

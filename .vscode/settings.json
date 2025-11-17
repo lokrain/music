@@ -1,0 +1,26 @@
+{
+    // === Core RA functionality ===
+    "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.imports.granularity.group": "crate",
+    "rust-analyzer.imports.prefix": "crate",
+    // Use Clippy for the on-save check
+    "rust-analyzer.check.command": "clippy",
+    // === Inlay hints (clean, not overwhelming) ===
+    "rust-analyzer.inlayHints.typeHints.enable": true,
+    "rust-analyzer.inlayHints.parameterHints.enable": true,
+    "rust-analyzer.inlayHints.chainingHints.enable": true,
+    "rust-analyzer.inlayHints.closureReturnTypeHints.enable": "always",
+    // Disable noisy hints
+    "rust-analyzer.inlayHints.lifetimeElisionHints.enable": "never",
+    "rust-analyzer.inlayHints.closingBraceHints.enable": false,
+    "rust-analyzer.inlayHints.discriminantHints.enable": "never",
+    // === Semantic highlighting ===
+    // Let VS Code + RA defaults handle this; just keep it enabled globally.
+    "editor.semanticHighlighting.enabled": true,
+    // === Format on save ===
+    "editor.formatOnSave": true,
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    }
+}

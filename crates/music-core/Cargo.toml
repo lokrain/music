@@ -1,0 +1,26 @@
+[package]
+name = "music-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Core music primitives with arbitrary tuning systems."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = []
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+num-traits = "0.2.19"
+
+[dev-dependencies]
+criterion = { workspace = true }
+serde_json = { workspace = true }
+
+[[bench]]
+name = "pitch_bench"
+harness = false
