@@ -56,31 +56,31 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Render textual interval/scale maps that show how pitch classes relate across chosen temperaments, optionally highlighting modulatory paths.
 - **Complexity:** 2
 - **Value:** 70
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-10 — Implement `music profile`
 - **Body:** Summarize timing, density, and register usage for long inputs, including percentile-based ranges and swing detection hooks.
 - **Complexity:** 3
 - **Value:** 77
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-11 — Implement `music interpolate`
 - **Body:** Provide envelope interpolation for tempo, velocity, or tuning curves between anchor points and preview the resulting automation lanes.
 - **Complexity:** 3
 - **Value:** 72
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-12 — Implement `music search`
 - **Body:** Allow motif/pattern searches inside MIDI or note lists via intervallic fingerprinting with fuzzy tolerance controls.
 - **Complexity:** 3
 - **Value:** 86
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-13 — Implement `music estimate`
 - **Body:** Estimate tempo, key, and meter from raw note sequences or MIDI headers using heuristics defined in `music-analysis`.
 - **Complexity:** 2
 - **Value:** 75
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-14 — Implement `music resolve`
 - **Body:** Suggest voice-leading resolutions for active chords, highlighting stepwise options per part and exposing target-system constraints.

@@ -1095,6 +1095,183 @@ pub struct ScaleMapReport {
     pub modulatory_paths: Vec<ModulatoryPathSummary>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct InterpolatedPoint {
+    pub time: f32,
+    pub value: f32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InterpolationContext {
+    pub curve: String,
+    pub samples: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InterpolatedEnvelopeReport {
+    pub context: InterpolationContext,
+    pub unit: String,
+    pub anchors: Vec<InterpolatedPoint>,
+    pub samples: Vec<InterpolatedPoint>,
+}
+
+impl InterpolatedEnvelopeReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Interpolation ({unit}) — curve {curve}, {count} anchors, {samples} samples.",
+            unit = self.unit,
+            curve = self.context.curve,
+            count = self.anchors.len(),
+            samples = self.samples.len()
+        );
+        let _ = writeln!(&mut out, "Anchors:");
+        for anchor in &self.anchors {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>7.3}",
+                time = anchor.time,
+                value = anchor.value
+            );
+        }
+        let _ = writeln!(&mut out, "Samples:");
+        for point in &self.samples {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>7.3}",
+                time = point.time,
+                value = point.value
+            );
+        }
+        out
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct VelocityEnvelopeReport {
+    pub context: InterpolationContext,
+    pub anchors: Vec<InterpolatedPoint>,
+    pub samples: Vec<InterpolatedPoint>,
+    pub min_value: i32,
+    pub max_value: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScaleSearchReport {
+    pub system: String,
+    pub criteria: Vec<u8>,
+    pub match_count: usize,
+    pub matches: Vec<ScaleSearchMatch>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScaleSearchMatch {
+    pub scale: String,
+    pub root_index: i32,
+    pub root_label: String,
+}
+
+impl ScaleSearchReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Scale search in {system}: {count} match(es) for pcs {pcs:?}.",
+            system = self.system,
+            count = self.match_count,
+            pcs = self.criteria
+        );
+        for entry in &self.matches {
+            let _ = writeln!(
+                &mut out,
+                "  - {scale} rooted at {label} ({index}).",
+                scale = entry.scale,
+                label = entry.root_label,
+                index = entry.root_index
+            );
+        }
+        out
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChordSearchReport {
+    pub system: String,
+    pub criteria: Vec<u8>,
+    pub voicing: String,
+    pub match_count: usize,
+    pub matches: Vec<ChordSearchMatch>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChordSearchMatch {
+    pub scale: String,
+    pub degree: usize,
+    pub numeral: String,
+    pub root_label: String,
+    pub pitch_classes: Vec<u8>,
+}
+
+impl ChordSearchReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Chord search ({voicing}) in {system}: {count} match(es) for pcs {pcs:?}.",
+            voicing = self.voicing,
+            system = self.system,
+            count = self.match_count,
+            pcs = self.criteria
+        );
+        for entry in &self.matches {
+            let _ = writeln!(
+                &mut out,
+                "  - {scale} degree {degree} ({numeral}) root {root}, pcs {pcs:?}.",
+                scale = entry.scale,
+                degree = entry.degree,
+                numeral = entry.numeral,
+                root = entry.root_label,
+                pcs = entry.pitch_classes
+            );
+        }
+        out
+    }
+}
+
+impl VelocityEnvelopeReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Velocity interpolation [{min}..{max}] — curve {curve}, {count} anchors.",
+            min = self.min_value,
+            max = self.max_value,
+            curve = self.context.curve,
+            count = self.anchors.len()
+        );
+        let _ = writeln!(&mut out, "Anchors:");
+        for anchor in &self.anchors {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>6.1}",
+                time = anchor.time,
+                value = anchor.value
+            );
+        }
+        let _ = writeln!(&mut out, "Samples:");
+        for point in &self.samples {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>6.1}",
+                time = point.time,
+                value = point.value
+            );
+        }
+        out
+    }
+}
+
 impl ScaleMapReport {
     pub fn render_text(&self) -> String {
         let mut out = String::new();
@@ -2167,4 +2344,157 @@ impl ChordExtrapolationReport {
 pub struct ChordPrediction {
     pub chord: String,
     pub probability: f32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfileReport {
+    pub input_type: String,
+    pub event_count: usize,
+    pub total_duration_sec: Option<f64>,
+    pub density_events_per_sec: Option<f64>,
+    pub pitch_range: PitchRangeReport,
+    pub timing: TimingReport,
+}
+
+impl ProfileReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Profile for {} ({} events).",
+            self.input_type, self.event_count
+        );
+
+        if let Some(duration) = self.total_duration_sec {
+            let _ = writeln!(&mut out, "Total duration: {:.2} seconds.", duration);
+        }
+
+        if let Some(density) = self.density_events_per_sec {
+            let _ = writeln!(&mut out, "Density: {:.2} events/second.", density);
+        }
+
+        let _ = writeln!(&mut out, "\nPitch Range:");
+        if let Some(min) = self.pitch_range.min_pitch {
+            let _ = writeln!(&mut out, "  Min pitch: {}", min);
+        }
+        if let Some(max) = self.pitch_range.max_pitch {
+            let _ = writeln!(&mut out, "  Max pitch: {}", max);
+        }
+        if let Some(median) = self.pitch_range.median_pitch {
+            let _ = writeln!(&mut out, "  Median pitch: {:.1}", median);
+        }
+        if let Some(p25) = self.pitch_range.p25_pitch {
+            let _ = writeln!(&mut out, "  25th percentile: {:.1}", p25);
+        }
+        if let Some(p75) = self.pitch_range.p75_pitch {
+            let _ = writeln!(&mut out, "  75th percentile: {:.1}", p75);
+        }
+
+        let _ = writeln!(&mut out, "\nTiming:");
+        if let Some(min) = self.timing.min_ioi_sec {
+            let _ = writeln!(&mut out, "  Min IOI: {:.3} seconds.", min);
+        }
+        if let Some(max) = self.timing.max_ioi_sec {
+            let _ = writeln!(&mut out, "  Max IOI: {:.3} seconds.", max);
+        }
+        if let Some(median) = self.timing.median_ioi_sec {
+            let _ = writeln!(&mut out, "  Median IOI: {:.3} seconds.", median);
+        }
+        if let Some(p25) = self.timing.p25_ioi_sec {
+            let _ = writeln!(&mut out, "  25th percentile IOI: {:.3} seconds.", p25);
+        }
+        if let Some(p75) = self.timing.p75_ioi_sec {
+            let _ = writeln!(&mut out, "  75th percentile IOI: {:.3} seconds.", p75);
+        }
+        if let Some(swing) = self.timing.swing_ratio {
+            let _ = writeln!(&mut out, "  Detected swing ratio: {:.2}", swing);
+        }
+
+        out
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PitchRangeReport {
+    pub min_pitch: Option<u8>,
+    pub max_pitch: Option<u8>,
+    pub median_pitch: Option<f64>,
+    pub p25_pitch: Option<f64>,
+    pub p75_pitch: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TimingReport {
+    pub min_ioi_sec: Option<f64>,
+    pub max_ioi_sec: Option<f64>,
+    pub median_ioi_sec: Option<f64>,
+    pub p25_ioi_sec: Option<f64>,
+    pub p75_ioi_sec: Option<f64>,
+    pub swing_ratio: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EstimateReport {
+    pub input_type: String,
+    pub tempo_bpm: Option<f64>,
+    pub tempo_confidence: Option<f64>,
+    pub key_estimate: Option<String>,
+    pub key_confidence: Option<f64>,
+    pub meter: Option<String>,
+    pub meter_confidence: Option<f64>,
+}
+
+impl EstimateReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Musical feature estimation for {}.",
+            self.input_type
+        );
+
+        if let Some(key) = &self.key_estimate {
+            let conf = self.key_confidence.unwrap_or(0.0);
+            let _ = writeln!(
+                &mut out,
+                "\nEstimated key: {} (confidence: {:.1}%)",
+                key,
+                conf * 100.0
+            );
+        } else {
+            let _ = writeln!(&mut out, "\nEstimated key: (not available)");
+        }
+
+        if let Some(tempo) = self.tempo_bpm {
+            let conf = self.tempo_confidence.unwrap_or(0.0);
+            let _ = writeln!(
+                &mut out,
+                "Estimated tempo: {:.1} BPM (confidence: {:.1}%)",
+                tempo,
+                conf * 100.0
+            );
+        } else {
+            let _ = writeln!(
+                &mut out,
+                "Estimated tempo: (not available - no timing data)"
+            );
+        }
+
+        if let Some(meter) = &self.meter {
+            let conf = self.meter_confidence.unwrap_or(0.0);
+            let _ = writeln!(
+                &mut out,
+                "Estimated meter: {} (confidence: {:.1}%)",
+                meter,
+                conf * 100.0
+            );
+        } else {
+            let _ = writeln!(
+                &mut out,
+                "Estimated meter: (not available - no timing data)"
+            );
+        }
+
+        out
+    }
 }

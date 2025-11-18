@@ -98,14 +98,26 @@ pub enum Command {
         #[command(subcommand)]
         command: MapCommand,
     },
-    #[command(about = "Style/genre profiling for a key or progression")]
-    Profile,
+    #[command(about = "Profile timing, density, and register usage of musical inputs")]
+    Profile {
+        #[command(subcommand)]
+        command: ProfileCommand,
+    },
     #[command(about = "Blend between two musical entities")]
-    Interpolate,
+    Interpolate {
+        #[command(subcommand)]
+        command: InterpolateCommand,
+    },
     #[command(about = "Find objects matching constraints (notes, chords, scales)")]
-    Search,
-    #[command(about = "Produce heuristic estimates (brightness, instability)")]
-    Estimate,
+    Search {
+        #[command(subcommand)]
+        command: SearchCommand,
+    },
+    #[command(about = "Estimate tempo, key, and meter from musical input")]
+    Estimate {
+        #[command(subcommand)]
+        command: EstimateCommand,
+    },
     #[command(about = "Suggest resolution paths for tensions or non-chord tones")]
     Resolve,
 }
@@ -134,6 +146,38 @@ pub enum GenerateCommand {
 pub enum MapCommand {
     #[command(about = "Render a pitch-class map for a scale in a system")]
     Scale(MapScaleArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ProfileCommand {
+    #[command(about = "Profile a melody sequence (pitch indices only)")]
+    Melody(ProfileMelodyArgs),
+    #[command(about = "Profile a MIDI file with timing information")]
+    Midi(ProfileMidiArgs),
+}
+
+#[derive(Subcommand)]
+pub enum InterpolateCommand {
+    #[command(about = "Interpolate tempo envelope between anchor points")]
+    Tempo(InterpolateTempoArgs),
+    #[command(about = "Interpolate velocity/expression envelopes")]
+    Velocity(InterpolateVelocityArgs),
+}
+
+#[derive(Subcommand)]
+pub enum SearchCommand {
+    #[command(about = "Find scales containing the provided notes")]
+    Scale(SearchScaleArgs),
+    #[command(about = "Find chords containing the provided notes")]
+    Chord(SearchChordArgs),
+}
+
+#[derive(Subcommand)]
+pub enum EstimateCommand {
+    #[command(about = "Estimate key from a melody sequence")]
+    Melody(EstimateMelodyArgs),
+    #[command(about = "Estimate tempo, key, and meter from a MIDI file")]
+    Midi(EstimateMidiArgs),
 }
 
 #[derive(Subcommand)]
@@ -482,6 +526,92 @@ pub struct MapScaleArgs {
     pub modulations: usize,
 }
 
+#[derive(Args, Clone)]
+pub struct InterpolateCommonArgs {
+    /// Comma-separated time:value anchor points (e.g., 0:120,4:140).
+    #[arg(long = "points", value_delimiter = ',')]
+    pub points: Vec<String>,
+
+    /// Number of interpolated samples between the anchors.
+    #[arg(long = "samples", default_value_t = 8)]
+    pub samples: usize,
+
+    /// Interpolation curve.
+    #[arg(long, value_enum, default_value_t = InterpolationCurve::Linear)]
+    pub curve: InterpolationCurve,
+}
+
+#[derive(Args)]
+pub struct SearchScaleArgs {
+    /// Notes or pitch indices whose pitch classes must be present.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier used for labeling.
+    #[arg(long, default_value = "12tet")]
+    pub system: String,
+
+    /// Maximum number of matches to display.
+    #[arg(long = "limit", default_value_t = 12)]
+    pub limit: usize,
+}
+
+#[derive(Args)]
+pub struct SearchChordArgs {
+    /// Notes or pitch indices whose pitch classes must be present.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier used for labeling.
+    #[arg(long, default_value = "12tet")]
+    pub system: String,
+
+    /// Whether to search triads or seventh chords.
+    #[arg(long, value_enum, default_value_t = ChordVoicing::Triads)]
+    pub voicing: ChordVoicing,
+
+    /// Maximum number of matches to display.
+    #[arg(long = "limit", default_value_t = 12)]
+    pub limit: usize,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum InterpolationCurve {
+    Linear,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
+}
+
+#[derive(Args, Clone)]
+pub struct InterpolateTempoArgs {
+    #[command(flatten)]
+    pub common: InterpolateCommonArgs,
+
+    /// Units for value column (BPM or relative multiplier).
+    #[arg(long, value_enum, default_value_t = TempoUnit::Bpm)]
+    pub unit: TempoUnit,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum TempoUnit {
+    Bpm,
+    Multiplier,
+}
+
+#[derive(Args, Clone)]
+pub struct InterpolateVelocityArgs {
+    #[command(flatten)]
+    pub common: InterpolateCommonArgs,
+
+    /// Clamp velocity range (default MIDI 0-127).
+    #[arg(long = "min", default_value_t = 0)]
+    pub min_value: i32,
+
+    #[arg(long = "max", default_value_t = 127)]
+    pub max_value: i32,
+}
+
 #[derive(Args)]
 pub struct ExplainPitchArgs {
     /// Abstract pitch index to explain (default A4).
@@ -783,4 +913,48 @@ pub struct ExtrapolateChordsArgs {
     /// Optional key context for reporting.
     #[arg(long = "in", value_name = "KEY")]
     pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ProfileMelodyArgs {
+    /// Comma-separated list of MIDI-like pitch indices to profile.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier (for context, not used in profiling).
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct ProfileMidiArgs {
+    /// Path to MIDI file to profile.
+    #[arg(long = "file")]
+    pub file: std::path::PathBuf,
+
+    /// Pitch system identifier (for context, not used in profiling).
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct EstimateMelodyArgs {
+    /// Comma-separated list of MIDI-like pitch indices to analyze.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier (for context).
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct EstimateMidiArgs {
+    /// Path to MIDI file to analyze.
+    #[arg(long = "file")]
+    pub file: std::path::PathBuf,
+
+    /// Pitch system identifier (for context).
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
 }

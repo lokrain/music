@@ -416,9 +416,52 @@ Right-only chords: IV.
 
 Swap in the `melody` or `midi` subcommands for other comparisons, and add `--format json` to feed downstream automation.
 
+### Interpolation helpers
+
+`music interpolate` generates control envelopes between anchor points. Two subcommands ship:
+
+- `tempo` — interpolate BPM/multiplier curves for conductors or DAWs.
+- `velocity` — interpolate dynamics/CC values with clamping.
+
+```bash
+cargo run -p music-cli -- interpolate tempo --points 0:120,4:140 --samples 5
+```
+
+```
+Interpolation (bpm) — curve Linear, 2 anchors, 6 samples.
+Anchors:
+  t= 0.00 → 120.000
+  t= 4.00 → 140.000
+Samples:
+  t= 0.00 → 120.000
+  t= 0.80 → 124.000
+  t= 1.60 → 128.000
+  t= 2.40 → 132.000
+  t= 3.20 → 136.000
+  t= 4.00 → 140.000
+```
+
+Use `--curve` to switch easing (linear/ease-in/ease-out/ease-in-out) and `--format json` to capture structured data.
+
+### Search utilities
+
+`music search` surfaces scales or chords that contain specified notes/pitch classes.
+
+```bash
+cargo run -p music-cli -- search scale --notes 60,64,67 --limit 2
+```
+
+```
+Scale search in 12tet: 2 match(es) for pcs [0, 4, 7].
+  - Ionian rooted at 12-TET(60) (60).
+  - Major rooted at 12-TET(60) (60).
+```
+
+Use `search chord` to scan diatonic triads/sevenths (toggle `--voicing`), and add `--format json` when you need structured results.
+
 ### Placeholder verbs
 
-The remaining top-level verbs (`extrapolate`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
+The remaining top-level verbs (`extrapolate`, `map`, `profile`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
 
 ```
 `music <verb>` is not implemented yet. Use `music <verb> --help` to preview its planned behavior.

@@ -56,8 +56,8 @@ Commands:
   explain-diff   Compare melodies/progressions/MIDI files and highlight differences
   map            Produce relational maps (keys, chords, mixture sets)
   profile        Style/genre profiling for a key or progression
-  interpolate    Blend between two musical entities
-  search         Find objects matching constraints (notes, chords, scales)
+  interpolate    Interpolate tempo/velocity envelopes between anchor points
+  search         Find scales/chords matching note or pitch-class constraints
   estimate       Produce heuristic estimates (brightness, instability)
   resolve        Suggest resolution paths for tensions or non-chord tones
 

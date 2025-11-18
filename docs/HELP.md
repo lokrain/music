@@ -259,15 +259,20 @@ MIDI options:
 ## map — help
 
 ```sh
-Usage: music map <thing> [options]
+Usage: music map <command> [options]
 
-Things:
-  keys           Key adjacency map
-  chords         Chord-type connectivity
-  mixtures       Modal mixture mapping
+Commands:
+  scale         Render a pitch-class map for a scale
+  help          Print command-specific help
 
-Options:
-  --json             JSON graph
+Shared options:
+  --format <fmt>     text (default) or json output
+
+Scale options:
+  --root <int>       Root index anchoring the map (default 60)
+  --system <id>      Pitch system identifier (default 12tet)
+  --scale <Scale>    Scale choice (major, dorian, ...)
+  --modulations <n>  Number of modal rotations to highlight (default 2)
 ```
 
 ---
@@ -291,14 +296,25 @@ Options:
 ## interpolate — help
 
 ```sh
-Usage: music interpolate <A> <B> [options]
+Usage: music interpolate <command> [options]
 
-Blend:
-  keys, scales, chords, progressions
+Commands:
+  tempo        Interpolate tempo envelope between anchor points
+  velocity     Interpolate velocity/expression envelopes
+  help         Print command-specific help
 
-Options:
-  --steps <n>        Number of intermediate states
-  --json             JSON output
+Shared options:
+  --points <t:v,...>     Comma-separated anchors such as 0:120,4:140
+  --samples <N>          Number of interpolated points between anchors (default 8)
+  --curve <mode>         linear, ease-in, ease-out, ease-in-out
+  --format <fmt>         text (default) or json output
+
+Tempo options:
+  --unit <bpm|multiplier>    Interpret values as BPM or multipliers
+
+Velocity options:
+  --min <value>              Clamp minimum (default 0)
+  --max <value>              Clamp maximum (default 127)
 ```
 
 ---
@@ -306,15 +322,21 @@ Options:
 ## search — help
 
 ```sh
-Usage: music search <query> [options]
+Usage: music search <command> [options]
 
-Queries:
-  scale          Find scales containing specific notes
-  chord          Find chords with interval criteria
-  progression    Find matching progression patterns
+Commands:
+  scale       Find scales containing given notes/pitch-classes
+  chord       Find diatonic chords containing given notes
+  help        Print command-specific help
 
-Options:
-  --json             JSON output
+Shared options:
+  --notes <list>      Comma-separated notes or pitch indices (e.g., 60,64,67)
+  --system <id>       Pitch system for labeling (default 12tet)
+  --limit <N>         Maximum matches to display (default 12)
+  --format <fmt>      text (default) or json output
+
+Chord-specific options:
+  --voicing <triads|sevenths>   Choose which diatonic set to search
 ```
 
 ---

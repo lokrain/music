@@ -50,6 +50,24 @@ const MELODIC_MINOR_MODE_NAMES: [&str; 7] = [
 ];
 
 impl ScaleKind {
+    pub fn all() -> &'static [ScaleKind] {
+        const ALL: [ScaleKind; 12] = [
+            ScaleKind::Ionian,
+            ScaleKind::Dorian,
+            ScaleKind::Phrygian,
+            ScaleKind::Lydian,
+            ScaleKind::Mixolydian,
+            ScaleKind::Aeolian,
+            ScaleKind::Locrian,
+            ScaleKind::Major,
+            ScaleKind::Minor,
+            ScaleKind::NaturalMinor,
+            ScaleKind::HarmonicMinor,
+            ScaleKind::MelodicMinor,
+        ];
+        &ALL
+    }
+
     pub fn build_scale(
         &self,
         root_index: i32,

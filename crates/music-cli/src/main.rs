@@ -13,9 +13,10 @@ mod theory;
 use crate::{
     cli::{Cli, Command},
     handlers::{
-        handle_analyze, handle_convert, handle_explain, handle_explain_diff, handle_expose,
-        handle_extrapolate, handle_generate, handle_inspect, handle_list, handle_map,
-        handle_placeholder, handle_render, handle_score, handle_suggest, handle_validate,
+        handle_analyze, handle_convert, handle_estimate, handle_explain, handle_explain_diff,
+        handle_expose, handle_extrapolate, handle_generate, handle_inspect, handle_interpolate,
+        handle_list, handle_map, handle_placeholder, handle_profile, handle_render, handle_score,
+        handle_search, handle_suggest, handle_validate,
     },
 };
 
@@ -49,10 +50,10 @@ fn dispatch(engine: &MusicEngine, cli: Cli) -> Result<()> {
         Command::Extrapolate { command } => handle_extrapolate(engine, format, command),
         Command::ExplainDiff { command } => handle_explain_diff(engine, format, command),
         Command::Map { command } => handle_map(engine, format, command),
-        Command::Profile => handle_placeholder("profile"),
-        Command::Interpolate => handle_placeholder("interpolate"),
-        Command::Search => handle_placeholder("search"),
-        Command::Estimate => handle_placeholder("estimate"),
+        Command::Profile { command } => handle_profile(engine, format, command),
+        Command::Interpolate { command } => handle_interpolate(engine, format, command),
+        Command::Search { command } => handle_search(engine, format, command),
+        Command::Estimate { command } => handle_estimate(engine, format, command),
         Command::Resolve => handle_placeholder("resolve"),
     }
 }
