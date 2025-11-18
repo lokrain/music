@@ -227,13 +227,31 @@ Options:
 ## explain-diff — help
 
 ```sh
-Usage: music explain-diff <A> <B> [options]
+Usage: music explain-diff <command> [options]
 
-Compare:
-  keys, scales, chords, modes, pitch sets
+Commands:
+  melody       Compare two melodies via pitch-class histograms
+  progression  Compare two Roman-numeral progressions
+  midi         Compare two MIDI files via header metadata
+  help         Print command-specific help
 
-Options:
-  --json             JSON output
+Shared options:
+  --format <fmt>     text (default) or json output
+
+Melody options:
+  --left-notes <list>    Comma-separated MIDI-like indices for the left melody
+  --right-notes <list>   Comma-separated indices for the right melody
+  --in <KEY>             Optional key hint surfaced in commentary
+  --system <id>          Pitch system used for labeling (default 12tet)
+
+Progression options:
+  --left <I,ii,V>        Roman numerals for the left progression
+  --right <I,IV,V>       Roman numerals for the right progression
+  --in <KEY>             Optional shared key context
+
+MIDI options:
+  --left-file <PATH>     Left-hand MIDI file
+  --right-file <PATH>    Right-hand MIDI file
 ```
 
 ---

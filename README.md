@@ -388,9 +388,37 @@ Context key hint: Cmaj.
 
 Switching the subcommand to `melody` or `chord` toggles the scoring rubric (tension density / contour for melodies, color vs. stability for chords). Pair `--format json` with downstream automation if you need structured metrics.
 
+### Diff explainers
+
+`music explain-diff` compares two data sources and surfaces the most salient differences. Three domains ship today:
+
+- `melody` compares pitch-class histograms and ambitus.
+- `progression` compares Roman numeral inventories, function counts, and cadences.
+- `midi` compares file metadata (format, declared/detected track counts, ticks-per-quarter, size).
+
+```bash
+cargo run -p music-cli -- explain-diff progression --left I,ii,V,I --right I,IV,V --in Cmaj
+```
+
+```
+Progression diff — shared 2, left unique 1, right unique 1.
+Context key: Cmaj.
+Left: 3/4 unique chords, tonic 2, predominant 1, dominant 1, other 0.
+  Cadence: V–I (Authentic cadence, conf 92%).
+Right: 3/3 unique chords, tonic 1, predominant 1, dominant 1, other 0.
+  Cadence: none detected.
+Shared chords: I, V.
+Left-only chords: II.
+Right-only chords: IV.
+
+- Left progression cadences while right does not
+```
+
+Swap in the `melody` or `midi` subcommands for other comparisons, and add `--format json` to feed downstream automation.
+
 ### Placeholder verbs
 
-The remaining top-level verbs (`extrapolate`, `explain-diff`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
+The remaining top-level verbs (`extrapolate`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
 
 ```
 `music <verb>` is not implemented yet. Use `music <verb> --help` to preview its planned behavior.

@@ -44,13 +44,13 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Forecast likely chord or melody continuations via Markov / n-gram stats derived from the `music-analysis` crate, exposing tunable lookahead depth.
 - **Complexity:** 3
 - **Value:** 80
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-8 — Implement `music explain-diff`
 - **Body:** Compare two analyses (e.g., melodies, chord charts, MIDI files) and surface keyed deltas such as mismatched pitch-classes or function counts.
 - **Complexity:** 2
 - **Value:** 74
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-9 — Implement `music map`
 - **Body:** Render textual interval/scale maps that show how pitch classes relate across chosen temperaments, optionally highlighting modulatory paths.

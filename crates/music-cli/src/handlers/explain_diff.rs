@@ -5,21 +5,19 @@ use music_engine::prelude::*;
 
 use crate::{
     cli::{
-        ExplainDiffCommand, ExplainDiffMelodyArgs, ExplainDiffMidiArgs,
-        ExplainDiffProgressionArgs,
+        ExplainDiffCommand, ExplainDiffMelodyArgs, ExplainDiffMidiArgs, ExplainDiffProgressionArgs,
     },
     format::OutputFormat,
     responses::{
-        Ambitus, CadenceSummary, FunctionCounts, MelodyDiffReport, MelodyProfileSummary,
-        MidiDiffReport, MidiFileSummary, PitchClassBin, ProgressionDiffReport,
-        ProgressionProfileSummary,
+        Ambitus, FunctionCounts, MelodyDiffReport, MelodyProfileSummary, MidiDiffReport,
+        MidiFileSummary, PitchClassBin, ProgressionDiffReport, ProgressionProfileSummary,
     },
 };
 
-use super::analyze::{classify_function, detect_cadence, normalize_roman, FunctionRole};
+use super::analyze::{FunctionRole, classify_function, detect_cadence, normalize_roman};
 
 pub fn handle_explain_diff(
-    engine: &MusicEngine,
+    _engine: &MusicEngine,
     format: OutputFormat,
     command: ExplainDiffCommand,
 ) -> Result<()> {
@@ -74,10 +72,7 @@ fn explain_diff_melody(format: OutputFormat, args: ExplainDiffMelodyArgs) -> Res
     format.emit(&report, MelodyDiffReport::render_text)
 }
 
-fn explain_diff_progression(
-    format: OutputFormat,
-    args: ExplainDiffProgressionArgs,
-) -> Result<()> {
+fn explain_diff_progression(format: OutputFormat, args: ExplainDiffProgressionArgs) -> Result<()> {
     if args.left.is_empty() || args.right.is_empty() {
         bail!("provide --left and --right progressions with at least one chord each");
     }
@@ -162,11 +157,7 @@ impl MelodyProfile {
     fn into_summary(self) -> MelodyProfileSummary {
         MelodyProfileSummary {
             note_count: self.note_count,
-            distinct_pitch_classes: self
-                .histogram
-                .iter()
-                .filter(|count| **count > 0)
-                .count(),
+            distinct_pitch_classes: self.histogram.iter().filter(|count| **count > 0).count(),
             ambitus: self.ambitus,
             histogram: histogram_bins(&self.histogram),
         }
@@ -296,10 +287,7 @@ fn compare_progressions(
     let left_set: HashSet<String> = left.iter().map(|t| normalize_roman(t)).collect();
     let right_set: HashSet<String> = right.iter().map(|t| normalize_roman(t)).collect();
 
-    let mut shared: Vec<String> = left_set
-        .intersection(&right_set)
-        .cloned()
-        .collect();
+    let mut shared: Vec<String> = left_set.intersection(&right_set).cloned().collect();
     shared.sort();
     let mut left_only: Vec<String> = left_set.difference(&right_set).cloned().collect();
     left_only.sort();
@@ -312,8 +300,8 @@ fn compare_progressions(
 fn midi_summary(path: &Path) -> Result<MidiFileSummary> {
     let metadata = fs::metadata(path)
         .with_context(|| format!("failed to read metadata for {}", path.display()))?;
-    let bytes = fs::read(path)
-        .with_context(|| format!("failed to read MIDI file {}", path.display()))?;
+    let bytes =
+        fs::read(path).with_context(|| format!("failed to read MIDI file {}", path.display()))?;
     let (is_standard_midi, header_format, declared_tracks, ticks_per_quarter) =
         if bytes.len() >= 14 && &bytes[0..4] == b"MThd" {
             (

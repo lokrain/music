@@ -53,7 +53,7 @@ Commands:
   generate       Create motif/arpeggio/rhythm seeds parameterized by density
   score          Heuristic scoring for progressions, melodies, and chords
   extrapolate    Extend or predict continuation of a musical pattern
-  explain-diff   Compare two objects and highlight differences
+  explain-diff   Compare melodies/progressions/MIDI files and highlight differences
   map            Produce relational maps (keys, chords, mixture sets)
   profile        Style/genre profiling for a key or progression
   interpolate    Blend between two musical entities

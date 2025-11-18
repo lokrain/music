@@ -94,7 +94,10 @@ pub enum Command {
         command: ExplainDiffCommand,
     },
     #[command(about = "Produce relational maps (keys, chords, mixture sets)")]
-    Map,
+    Map {
+        #[command(subcommand)]
+        command: MapCommand,
+    },
     #[command(about = "Style/genre profiling for a key or progression")]
     Profile,
     #[command(about = "Blend between two musical entities")]
@@ -125,6 +128,12 @@ pub enum GenerateCommand {
     Arpeggio(GenerateArpeggioArgs),
     #[command(about = "Generate a rhythm cell sized for the density")]
     Rhythm(GenerateRhythmArgs),
+}
+
+#[derive(Subcommand)]
+pub enum MapCommand {
+    #[command(about = "Render a pitch-class map for a scale in a system")]
+    Scale(MapScaleArgs),
 }
 
 #[derive(Subcommand)]
@@ -452,6 +461,25 @@ pub struct ExplainDiffMidiArgs {
     /// Right-hand MIDI file path.
     #[arg(long = "right-file", value_name = "PATH")]
     pub right_file: PathBuf,
+}
+
+#[derive(Args)]
+pub struct MapScaleArgs {
+    /// Root index anchoring the map (e.g., 60 for middle C).
+    #[arg(short, long, default_value_t = 60)]
+    pub root: i32,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Scale used to populate the pitch-class map.
+    #[arg(long, value_enum, default_value_t = ScaleKind::Major)]
+    pub scale: ScaleKind,
+
+    /// Number of modal rotations to highlight as modulation candidates.
+    #[arg(long = "modulations", default_value_t = 2)]
+    pub modulations: usize,
 }
 
 #[derive(Args)]
