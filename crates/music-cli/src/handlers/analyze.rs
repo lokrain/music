@@ -289,7 +289,7 @@ pub(crate) fn classify_function(token: &str) -> FunctionRole {
     }
 }
 
-fn normalize_roman(token: &str) -> String {
+pub(crate) fn normalize_roman(token: &str) -> String {
     let mut result = String::new();
     for ch in token.chars() {
         if matches!(ch, '#' | '♯' | 'b' | '♭' | '+' | '°' | 'ø') {
@@ -312,7 +312,7 @@ fn normalize_roman(token: &str) -> String {
     }
 }
 
-fn detect_cadence(tokens: &[String]) -> Option<CadenceSummary> {
+pub(crate) fn detect_cadence(tokens: &[String]) -> Option<CadenceSummary> {
     if tokens.len() < 2 {
         return None;
     }

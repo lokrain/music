@@ -109,6 +109,25 @@ impl fmt::Display for ScaleKind {
     }
 }
 
+impl ScaleKind {
+    #[must_use]
+    pub fn pitch_classes(&self) -> &'static [u8; 7] {
+        match self {
+            ScaleKind::Ionian | ScaleKind::Major => &[0, 2, 4, 5, 7, 9, 11],
+            ScaleKind::Dorian => &[0, 2, 3, 5, 7, 9, 10],
+            ScaleKind::Phrygian => &[0, 1, 3, 5, 7, 8, 10],
+            ScaleKind::Lydian => &[0, 2, 4, 6, 7, 9, 11],
+            ScaleKind::Mixolydian => &[0, 2, 4, 5, 7, 9, 10],
+            ScaleKind::Aeolian | ScaleKind::Minor | ScaleKind::NaturalMinor => {
+                &[0, 2, 3, 5, 7, 8, 10]
+            }
+            ScaleKind::Locrian => &[0, 1, 3, 5, 6, 8, 10],
+            ScaleKind::HarmonicMinor => &[0, 2, 3, 5, 7, 8, 11],
+            ScaleKind::MelodicMinor => &[0, 2, 3, 5, 7, 9, 11],
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum ChordVoicing {
     Triads,

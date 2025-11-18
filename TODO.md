@@ -14,31 +14,31 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Add converters for pitch indices ↔ frequencies, MIDI files ↔ CSV note lists, and temperament remapping with validation through `music-core` registries.
 - **Complexity:** 3
 - **Value:** 90
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-3 — Implement `music validate`
 - **Body:** Validate user-provided melodies, progressions, and tunings by piping them through the registry and exposing actionable diagnostics when constraints fail.
 - **Complexity:** 2
 - **Value:** 78
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-4 — Implement `music render`
 - **Body:** Produce ASCII/Unicode staves or piano-roll previews from pitch sequences, with hooks for future SVG/LilyPond exports.
 - **Complexity:** 3
 - **Value:** 76
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-5 — Implement `music generate`
 - **Body:** Offer generative helpers (motifs, arpeggios, rhythm cells) parameterized by scale, system, and density to seed further analysis or export.
 - **Complexity:** 3
 - **Value:** 82
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-6 — Implement `music score`
 - **Body:** Emit MusicXML/LilyPond snippets from analyzed data, wiring in serialization settings and file targets.
 - **Complexity:** 3
 - **Value:** 84
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-7 — Implement `music extrapolate`
 - **Body:** Forecast likely chord or melody continuations via Markov / n-gram stats derived from the `music-analysis` crate, exposing tunable lookahead depth.
@@ -92,7 +92,7 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Capture sample CLI outputs (melody, chords, MIDI) under `crates/music-cli/tests` to lock text + JSON schemas against regressions.
 - **Complexity:** 2
 - **Value:** 73
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-16 — Structured JSON schema export
 - **Body:** Define and version JSON schemas for all CLI responses so downstream tools can validate outputs programmatically.

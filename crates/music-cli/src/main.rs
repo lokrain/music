@@ -13,8 +13,9 @@ mod theory;
 use crate::{
     cli::{Cli, Command},
     handlers::{
-        handle_analyze, handle_explain, handle_expose, handle_inspect, handle_list,
-        handle_placeholder, handle_suggest,
+        handle_analyze, handle_convert, handle_explain, handle_expose, handle_extrapolate,
+        handle_generate, handle_inspect, handle_list, handle_placeholder, handle_render,
+        handle_score, handle_suggest, handle_validate,
     },
 };
 
@@ -39,14 +40,14 @@ fn dispatch(engine: &MusicEngine, cli: Cli) -> Result<()> {
         Command::Analyze { command } => handle_analyze(engine, format, command),
         Command::Suggest { command } => handle_suggest(engine, format, command),
         Command::Explain { command } => handle_explain(engine, format, command),
-        Command::Convert => handle_placeholder("convert"),
-        Command::Validate => handle_placeholder("validate"),
-        Command::Render => handle_placeholder("render"),
+        Command::Convert { command } => handle_convert(engine, format, command),
+        Command::Validate { command } => handle_validate(engine, format, command),
+        Command::Render { command } => handle_render(engine, format, command),
         Command::Expose { command } => handle_expose(engine, format, command),
-        Command::Generate => handle_placeholder("generate"),
-        Command::Score => handle_placeholder("score"),
-        Command::Extrapolate => handle_placeholder("extrapolate"),
-        Command::ExplainDiff => handle_placeholder("explain-diff"),
+        Command::Generate { command } => handle_generate(engine, format, command),
+        Command::Score { command } => handle_score(engine, format, command),
+        Command::Extrapolate { command } => handle_extrapolate(engine, format, command),
+        Command::ExplainDiff { command: _ } => handle_placeholder("explain-diff"),
         Command::Map => handle_placeholder("map"),
         Command::Profile => handle_placeholder("profile"),
         Command::Interpolate => handle_placeholder("interpolate"),

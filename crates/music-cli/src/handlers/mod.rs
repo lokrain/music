@@ -1,13 +1,25 @@
 pub mod analyze;
+pub mod convert;
 pub mod explain;
+pub mod extrapolate;
+pub mod generate;
 pub mod inspect;
 pub mod list;
 pub mod placeholder;
+pub mod render;
+pub mod score;
 pub mod suggest;
+pub mod validate;
 
 pub use analyze::handle_analyze;
+pub use convert::handle_convert;
 pub use explain::handle_explain;
+pub use extrapolate::handle_extrapolate;
+pub use generate::handle_generate;
 pub use inspect::handle_inspect;
 pub use list::{handle_expose, handle_list};
 pub use placeholder::handle_placeholder;
+pub use render::handle_render;
+pub use score::handle_score;
 pub use suggest::handle_suggest;
+pub use validate::handle_validate;

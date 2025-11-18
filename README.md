@@ -40,6 +40,10 @@ High-performance Rust workspace for symbolic music theory, polyphonic analysis, 
 
 All crates share workspace lint/test configuration to guarantee consistent behavior.
 
+### CLI Architecture Note
+
+The `music-cli` crate follows a **boundary-layer pattern**: all CLI argument structs (e.g., `RenderStaffArgs`, `ValidateMelodyArgs`) are centralized in `src/cli.rs` to maintain a single source of truth for the command-line interface contract. Handler modules (`src/handlers/*.rs`) remain focused on business logic without Clap dependencies, improving separation of concerns and making the full CLI surface easier to audit and maintain.
+
 ## Getting Started
 
 1. **Install prerequisites**
@@ -251,9 +255,142 @@ Target degree 1: 12-TET(60) (261.626 Hz).
 	…
 ```
 
+### Converting data (`music convert …`)
+
+**Pitch indices ↔ literal frequencies**
+
+```bash
+cargo run -p music-cli -- convert pitch to-frequency --index 69 --system 12tet
+cargo run -p music-cli -- convert pitch to-index --frequency 432 --system 12tet --center 57
+```
+
+```
+Index 69 in 12tet ⇒ 440.000 Hz 12-TET(69)
+432.000 Hz ≈ index 57 in 12tet (12-TET(57)) — Δ -15.62 cents [search center 57, span 96]
+```
+
+The `to-index` variant scans ±`--search-span` semitones around `--center` to find the closest match, reporting the cents delta for quick retuning decisions.
+
+**Temperament remapping**
+
+```bash
+cargo run -p music-cli -- convert temperament --indices 60,64,67 --from 12tet --to 24tet --search-span 48
+```
+
+```
+Remapped 3 pitch(es) from 12tet → 24tet (search span ±48).
+source_index,source_label,source_hz,target_index,target_label,target_hz,cents_delta
+60,12-TET(60),261.626,120,24-TET(120),261.626,+0.00
+64,12-TET(64),329.628,128,24-TET(128),329.628,+0.00
+67,12-TET(67),391.995,134,24-TET(134),391.995,+0.00
+```
+
+Supply any list of indices (comma-delimited via `--indices`) and the CLI maps them into the target temperament while preserving literal Hz references.
+
+**MIDI files ↔ CSV note tables**
+
+```bash
+cargo run -p music-cli -- convert midi to-csv --file assets/example.mid --max-rows 8
+cargo run -p music-cli -- convert midi from-csv --csv /tmp/notes.csv --out /tmp/out.mid --ticks-per-quarter 960
+```
+
+The `to-csv` subcommand emits a headered table ready for spreadsheets or batch editing, optionally truncating with `--max-rows` for giant files. The `from-csv` path ingests the same schema (track, channel, note, start_tick, end_tick, velocity) and reconstructs a Standard MIDI file with the requested PPQ resolution while previewing the first few rows.
+
+### Validating inputs (`music validate …`)
+
+**Melody validation**
+
+```bash
+cargo run -p music-cli -- validate melody --notes 60,62,64,65,67,69,71 --system 12tet --root 60 --scale major --max-interval 12
+```
+
+```
+Melody validation in 12tet — Major scale (root 60, 7 note(s)).
+Ambitus: 11 semitone(s) [60 → 71]. Max interval allowed: ±12.
+Allowed pitch classes (relative to root): [0, 2, 4, 5, 7, 9, 11]
+No validation issues detected.
+```
+
+Supply `--notes` as a comma-delimited list of indices, then specify `--root`, `--scale`, and `--max-interval` to enforce scale membership and leap constraints. Out-of-scale notes and excessive intervals appear as warnings.
+
+**Progression validation**
+
+```bash
+cargo run -p music-cli -- validate progression --progression I,vi,ii,V --in Cmaj
+```
+
+```
+Progression validation (4 chord(s)).
+Key hint: Cmaj.
+All chord tokens parse as valid Roman numerals.
+Function counts — tonic 2, predominant 1, dominant 1, other 0.
+No terminal cadence detected (progression ends on V).
+```
+
+The validator checks for unrecognized tokens, duplicates, and cadence patterns. Use `--in KEY` to surface contextual diagnostics. Invalid chords and malformed numerals appear in the report.
+
+**Tuning validation**
+
+```bash
+cargo run -p music-cli -- validate tuning --system 12tet --indices 60,61,69,72
+```
+
+```
+Tuning validation for 12tet: 4/4 indices resolved.
+index,frequency_hz,label
+60,261.626,12-TET(60)
+61,277.183,12-TET(61)
+69,440.000,12-TET(69)
+72,523.251,12-TET(72)
+```
+
+Confirm that a pitch system is registered and can resolve frequencies/labels for the provided indices. The report lists resolved samples and flags any monotonic violations (where higher indices produce lower frequencies).
+
+### Generative helpers
+
+`music generate` now emits concrete building blocks instead of a placeholder. Motifs, arpeggios, and rhythm cells all share the same context controls (`--root`, `--system`, `--scale`, `--density`). Example:
+
+```bash
+cargo run -p music-cli -- generate motif --root 60 --scale dorian --density dense
+```
+
+```
+Motif (Dense) in Dorian / 12tet, root 60 (12-TET(60)).
+Extended diatonic sweep with upper neighbor turns
+Contour: Δ01 +3, Δ02 +4, Δ03 +5, Δ04 +3, Δ05 -3, Δ06 -3, Δ07 -2, Δ08 -4, Δ09 -3.
+   1. degree 1+0, index 60, 12-TET(60) (261.626 Hz)
+   2. degree 3+0, index 63, 12-TET(63) (311.127 Hz)
+   3. degree 5+0, index 67, 12-TET(67) (391.995 Hz)
+   4. degree 1+1, index 72, 12-TET(72) (523.251 Hz)
+   5. degree 3+1, index 75, 12-TET(75) (622.254 Hz)
+```
+
+`arpeggio` and `rhythm` subcommands follow the same pattern, yielding chord-tone sweeps and accent grids that can be exported or piped into analysis workflows. Switch to `--format json` when you need structured data.
+
+### Scoring helpers
+
+Use `music score` when you want quick heuristics around harmonic balance, melodic motion, or chord color without running full analysis pipelines. Each subcommand emits a numeric score plus supporting commentary that you can capture as text or JSON. Example:
+
+```bash
+cargo run -p music-cli -- score progression --progression I,ii,V --in Cmaj
+```
+
+```
+Progression score: 65.0/100 (3 unique / 3 total).
+Function balance — tonic 1, predominant 1, dominant 1, other 0.
+Coverage 100% · Cadence 0% · Variety 100%.
+Cadence detected: none.
+Context key hint: Cmaj.
+
+- Balanced tonic→predominant→dominant flow detected
+- No terminal cadence detected
+```
+
+Switching the subcommand to `melody` or `chord` toggles the scoring rubric (tension density / contour for melodies, color vs. stability for chords). Pair `--format json` with downstream automation if you need structured metrics.
+
 ### Placeholder verbs
 
-The remaining top-level verbs (`convert`, `validate`, `render`, `generate`, `score`, `extrapolate`, `explain-diff`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
+The remaining top-level verbs (`extrapolate`, `explain-diff`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
 
 ```
 `music <verb>` is not implemented yet. Use `music <verb> --help` to preview its planned behavior.

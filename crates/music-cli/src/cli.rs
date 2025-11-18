@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::{
     format::OutputFormat,
@@ -51,27 +51,48 @@ pub enum Command {
         command: ExplainCommand,
     },
     #[command(about = "Transform musical representations (transpose, spell, roman→chord)")]
-    Convert,
+    Convert {
+        #[command(subcommand)]
+        command: ConvertCommand,
+    },
     #[command(about = "Check correctness of structures (chords, scales, intervals)")]
-    Validate,
-    #[command(about = "Generate diagrams/maps (key graph, chord graph)")]
-    Render,
+    Validate {
+        #[command(subcommand)]
+        command: ValidateCommand,
+    },
+    #[command(about = "Render visual representations (staff notation, piano roll)")]
+    Render {
+        #[command(subcommand)]
+        command: RenderCommand,
+    },
     #[command(about = "Show internal registries, tunings, pitch systems, modes")]
     Expose {
         #[command(subcommand)]
         command: ExposeCommand,
     },
-    #[command(about = "Create musical material (melodies, progressions, basslines)")]
-    Generate,
+    #[command(about = "Create musical material (motifs, arpeggios, rhythm cells)")]
+    Generate {
+        #[command(subcommand)]
+        command: GenerateCommand,
+    },
     #[command(about = "Rate or grade structures (tension, resolution, brightness)")]
-    Score,
+    Score {
+        #[command(subcommand)]
+        command: ScoreCommand,
+    },
     #[command(about = "Extend or predict continuation of a musical pattern")]
-    Extrapolate,
+    Extrapolate {
+        #[command(subcommand)]
+        command: ExtrapolateCommand,
+    },
     #[command(
         name = "explain-diff",
         about = "Compare two objects and highlight differences"
     )]
-    ExplainDiff,
+    ExplainDiff {
+        #[command(subcommand)]
+        command: ExplainDiffCommand,
+    },
     #[command(about = "Produce relational maps (keys, chords, mixture sets)")]
     Map,
     #[command(about = "Style/genre profiling for a key or progression")]
@@ -97,6 +118,36 @@ pub enum ListCommand {
 }
 
 #[derive(Subcommand)]
+pub enum GenerateCommand {
+    #[command(about = "Generate a short motif within the selected scale")]
+    Motif(GenerateMotifArgs),
+    #[command(about = "Generate an arpeggio pattern anchored to the scale")]
+    Arpeggio(GenerateArpeggioArgs),
+    #[command(about = "Generate a rhythm cell sized for the density")]
+    Rhythm(GenerateRhythmArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ExplainDiffCommand {
+    #[command(about = "Compare two melodies via pitch-class histograms")]
+    Melody(ExplainDiffMelodyArgs),
+    #[command(about = "Compare two Roman-numeral progressions")]
+    Progression(ExplainDiffProgressionArgs),
+    #[command(about = "Compare two MIDI files via header metadata")]
+    Midi(ExplainDiffMidiArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ScoreCommand {
+    #[command(about = "Score functional strength and cadence weight")]
+    Progression(ScoreProgressionArgs),
+    #[command(about = "Score melodic tension density and resolution")]
+    Melody(ScoreMelodyArgs),
+    #[command(about = "Score chord color/tension profile")]
+    Chord(ScoreChordArgs),
+}
+
+#[derive(Subcommand)]
 pub enum InspectCommand {
     #[command(about = "Describe a pitch index within the selected tuning system")]
     Pitch(PitchArgs),
@@ -113,9 +164,74 @@ pub enum ExplainCommand {
 }
 
 #[derive(Subcommand)]
+pub enum ConvertCommand {
+    #[command(about = "Convert pitch indices and literal frequencies")]
+    Pitch {
+        #[command(subcommand)]
+        command: PitchConvertCommand,
+    },
+    #[command(about = "Convert MIDI files and CSV note tables")]
+    Midi {
+        #[command(subcommand)]
+        command: MidiConvertCommand,
+    },
+    #[command(about = "Remap note indices between temperaments")]
+    Temperament(ConvertTemperamentArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ValidateCommand {
+    #[command(about = "Validate a melody against a scale and interval constraints")]
+    Melody(ValidateMelodyArgs),
+    #[command(about = "Validate a Roman numeral progression for syntax and flow")]
+    Progression(ValidateProgressionArgs),
+    #[command(about = "Validate tuning system registration and sample indices")]
+    Tuning(ValidateTuningArgs),
+}
+
+#[derive(Subcommand)]
+pub enum RenderCommand {
+    #[command(about = "Render a staff notation for a melody or note sequence")]
+    Staff(RenderStaffArgs),
+    #[command(about = "Render a piano roll visualization for a note sequence")]
+    PianoRoll(RenderPianoRollArgs),
+}
+
+#[derive(Subcommand)]
+pub enum PitchConvertCommand {
+    #[command(about = "Resolve an index to frequency and label")]
+    ToFrequency(ConvertPitchArgs),
+    #[command(about = "Find the closest pitch index for a frequency")]
+    ToIndex(ConvertFrequencyArgs),
+}
+
+#[derive(Subcommand)]
+pub enum MidiConvertCommand {
+    #[command(about = "Flatten a MIDI file into a CSV note table")]
+    ToCsv(ConvertMidiToCsvArgs),
+    #[command(about = "Rebuild a MIDI file from a CSV note table")]
+    FromCsv(ConvertCsvToMidiArgs),
+}
+
+#[derive(Subcommand)]
 pub enum SuggestCommand {
     #[command(about = "Suggest borrowed chords from parallel modes for reharmonization")]
     Reharm(ReharmArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ExtrapolateCommand {
+    #[command(about = "Predict likely melody continuations using n-gram analysis")]
+    Melody(ExtrapolateMelodyArgs),
+    #[command(about = "Predict likely chord progressions using transition models")]
+    Chords(ExtrapolateChordsArgs),
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
+pub enum PatternDensity {
+    Sparse,
+    Balanced,
+    Dense,
 }
 
 #[derive(Subcommand)]
@@ -242,6 +358,43 @@ pub struct AnalyzeChordsArgs {
 }
 
 #[derive(Args)]
+pub struct ScoreProgressionArgs {
+    /// Comma-separated Roman numerals (e.g., I,vi,ii,V) describing the progression.
+    #[arg(long = "progression", value_delimiter = ',', num_args = 1..)]
+    pub progression: Vec<String>,
+
+    /// Optional key hint (e.g., Cmaj) surfaced with commentary.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ScoreMelodyArgs {
+    /// Comma-separated list of MIDI-like pitch indices (e.g., 60,62,64,65).
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Optional context key to bias commentary (e.g., Cmaj, Amin).
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+
+    /// Pitch system identifier registered with the engine for labeling.
+    #[arg(long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct ScoreChordArgs {
+    /// Comma-separated list of MIDI-like pitch indices (root to top).
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier registered with the engine for labeling.
+    #[arg(long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
 pub struct AnalyzeMidiArgs {
     /// Path to a MIDI file to summarize.
     #[arg(long = "file", value_name = "PATH")]
@@ -254,6 +407,51 @@ pub struct AnalyzeMidiArgs {
     /// Pitch system identifier registered with the engine (used for note labels).
     #[arg(long, default_value = "12tet")]
     pub system: String,
+}
+
+#[derive(Args)]
+pub struct ExplainDiffMelodyArgs {
+    /// Left-hand melody as comma-separated MIDI-like indices.
+    #[arg(long = "left-notes", value_delimiter = ',', num_args = 1..)]
+    pub left_notes: Vec<i32>,
+
+    /// Right-hand melody as comma-separated MIDI-like indices.
+    #[arg(long = "right-notes", value_delimiter = ',', num_args = 1..)]
+    pub right_notes: Vec<i32>,
+
+    /// Optional context key surfaced in commentary (e.g., Cmaj).
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct ExplainDiffProgressionArgs {
+    /// Left-hand Roman numeral progression.
+    #[arg(long = "left", value_delimiter = ',', num_args = 1..)]
+    pub left: Vec<String>,
+
+    /// Right-hand Roman numeral progression.
+    #[arg(long = "right", value_delimiter = ',', num_args = 1..)]
+    pub right: Vec<String>,
+
+    /// Optional context key associated with both progressions.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ExplainDiffMidiArgs {
+    /// Left-hand MIDI file path.
+    #[arg(long = "left-file", value_name = "PATH")]
+    pub left_file: PathBuf,
+
+    /// Right-hand MIDI file path.
+    #[arg(long = "right-file", value_name = "PATH")]
+    pub right_file: PathBuf,
 }
 
 #[derive(Args)]
@@ -311,4 +509,250 @@ pub struct ExplainChordArgs {
     /// Whether to analyze a triad or seventh chord at the selected degree.
     #[arg(long, value_enum, default_value_t = ChordVoicing::Triads)]
     pub voicing: ChordVoicing,
+}
+
+#[derive(Args)]
+pub struct ConvertPitchArgs {
+    /// Pitch index to resolve (defaults to concert A4 = 69).
+    #[arg(short, long, default_value_t = 69)]
+    pub index: i32,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct ConvertFrequencyArgs {
+    /// Literal frequency in Hz to match.
+    #[arg(long = "frequency", value_name = "HZ")]
+    pub frequency_hz: f32,
+
+    /// Pitch system identifier used when searching for the closest index.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Center index used when scanning for the best match.
+    #[arg(long = "center", default_value_t = 69)]
+    pub center: i32,
+
+    /// Number of semitone steps (in each direction) inspected during the search.
+    #[arg(long = "search-span", default_value_t = 96)]
+    pub search_span: i32,
+}
+
+#[derive(Args)]
+pub struct ConvertMidiToCsvArgs {
+    /// Path to the MIDI file to flatten.
+    #[arg(long = "file", value_name = "PATH")]
+    pub file: PathBuf,
+
+    /// Optional limit on the number of note rows to emit.
+    #[arg(long = "max-rows")]
+    pub max_rows: Option<usize>,
+}
+
+#[derive(Args)]
+pub struct ConvertCsvToMidiArgs {
+    /// Path to the CSV note table.
+    #[arg(long = "csv", value_name = "PATH")]
+    pub csv: PathBuf,
+
+    /// Output MIDI file that will be written.
+    #[arg(long = "out", value_name = "PATH")]
+    pub out: PathBuf,
+
+    /// Pulses-per-quarter-note resolution of the generated file.
+    #[arg(long = "ticks-per-quarter", default_value_t = 480)]
+    pub ticks_per_quarter: u16,
+}
+
+#[derive(Args)]
+pub struct ConvertTemperamentArgs {
+    /// Comma-separated list of pitch indices to remap.
+    #[arg(long = "indices", value_delimiter = ',', num_args = 1..)]
+    pub indices: Vec<i32>,
+
+    /// Source pitch system identifier.
+    #[arg(long = "from", default_value = "12tet")]
+    pub from_system: String,
+
+    /// Target pitch system identifier.
+    #[arg(long = "to", default_value = "24tet")]
+    pub to_system: String,
+
+    /// Number of semitone steps (in each direction) to inspect when resolving targets.
+    #[arg(long = "search-span", default_value_t = 96)]
+    pub search_span: i32,
+}
+
+#[derive(Args)]
+pub struct ValidateMelodyArgs {
+    /// Comma-separated list of MIDI-like pitch indices (e.g., 60,62,64).
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Root index anchoring the validation scale.
+    #[arg(short, long, default_value_t = 60)]
+    pub root: i32,
+
+    /// Scale used for validation.
+    #[arg(long, value_enum, default_value_t = ScaleKind::Major)]
+    pub scale: ScaleKind,
+
+    /// Maximum allowed melodic interval (in semitones) between adjacent notes.
+    #[arg(long = "max-interval", default_value_t = 12)]
+    pub max_interval: i32,
+}
+
+#[derive(Args)]
+pub struct ValidateProgressionArgs {
+    /// Comma-separated Roman numerals (e.g., I,vi,ii,V) describing the progression.
+    #[arg(long = "progression", value_delimiter = ',', num_args = 1..)]
+    pub progression: Vec<String>,
+
+    /// Optional key hint (e.g., Cmaj) surfaced with diagnostics.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ValidateTuningArgs {
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Comma-separated pitch indices probed for consistency.
+    #[arg(
+        long = "indices",
+        value_delimiter = ',',
+        num_args = 1..,
+        default_values_t = [60, 61, 69, 72]
+    )]
+    pub indices: Vec<i32>,
+}
+
+#[derive(Args)]
+pub struct RenderStaffArgs {
+    /// Comma-separated list of MIDI-like pitch indices (e.g., 60,62,64,65,67).
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Whether to use Unicode box-drawing characters for the staff.
+    #[arg(long = "unicode", default_value_t = false)]
+    pub unicode: bool,
+
+    /// Optional key context (e.g., Cmaj) for accidental rendering.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct RenderPianoRollArgs {
+    /// Comma-separated list of MIDI-like pitch indices (e.g., 60,62,64).
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Width of the piano roll in character columns.
+    #[arg(long = "width", default_value_t = 60)]
+    pub width: usize,
+
+    /// Number of vertical pitch steps to display (centered on note range).
+    #[arg(long = "height", default_value_t = 24)]
+    pub height: usize,
+
+    /// Whether to use Unicode box-drawing characters for the grid.
+    #[arg(long = "unicode", default_value_t = false)]
+    pub unicode: bool,
+}
+
+#[derive(Args, Clone)]
+pub struct GenerateCommonArgs {
+    /// Root index anchoring the generated material.
+    #[arg(short, long, default_value_t = 60)]
+    pub root: i32,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// Scale used to derive pitch material.
+    #[arg(long, value_enum, default_value_t = ScaleKind::Major)]
+    pub scale: ScaleKind,
+
+    /// Density of generated events (sparse → dense).
+    #[arg(long, value_enum, default_value_t = PatternDensity::Balanced)]
+    pub density: PatternDensity,
+}
+
+#[derive(Args, Clone)]
+pub struct GenerateMotifArgs {
+    #[command(flatten)]
+    pub common: GenerateCommonArgs,
+}
+
+#[derive(Args, Clone)]
+pub struct GenerateArpeggioArgs {
+    #[command(flatten)]
+    pub common: GenerateCommonArgs,
+}
+
+#[derive(Args, Clone)]
+pub struct GenerateRhythmArgs {
+    #[command(flatten)]
+    pub common: GenerateCommonArgs,
+}
+
+#[derive(Args)]
+pub struct ExtrapolateMelodyArgs {
+    /// Comma-separated list of MIDI-like pitch indices forming the input sequence.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+
+    /// N-gram order (1=bigram, 2=trigram, etc.) for transition model.
+    #[arg(long = "order", default_value_t = 2)]
+    pub order: usize,
+
+    /// Number of predictions to generate.
+    #[arg(long = "count", default_value_t = 5)]
+    pub count: usize,
+
+    /// Optional key context (e.g., Cmaj, Amin) to guide predictions.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ExtrapolateChordsArgs {
+    /// Comma-separated Roman numerals forming the input progression.
+    #[arg(long = "progression", value_delimiter = ',', num_args = 1..)]
+    pub progression: Vec<String>,
+
+    /// N-gram order (1=bigram, 2=trigram, etc.) for transition model.
+    #[arg(long = "order", default_value_t = 1)]
+    pub order: usize,
+
+    /// Number of predictions to generate.
+    #[arg(long = "count", default_value_t = 5)]
+    pub count: usize,
+
+    /// Optional key context for reporting.
+    #[arg(long = "in", value_name = "KEY")]
+    pub key_hint: Option<String>,
 }

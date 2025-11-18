@@ -160,17 +160,20 @@ Registries:
 ## generate — help
 
 ```sh
-Usage: music generate <thing> [options]
+Usage: music generate <command> [options]
 
-Things:
-  melody         Generate melody constrained by style and key
-  progression    Generate harmonic progression patterns
-  bassline       Generate bass movement consistent with function
+Commands:
+  motif        Generate a short motif within the selected scale
+  arpeggio     Generate an arpeggio pattern anchored to the scale
+  rhythm       Generate a rhythm cell sized for the density
+  help         Print command-specific help
 
 Options:
-  --in <Key>         Context key
-  --style <id>       Style profile
-  --json             JSON output
+  -r, --root <int>        Root index anchoring the generated material (default 60)
+  -s, --system <id>       Pitch system identifier (default 12tet)
+      --scale <Scale>     Scale used to derive pitch material (major, dorian, ...)
+      --density <mode>    sparse | balanced | dense (controls length + activity)
+      --format <fmt>      text (default) or json output
 ```
 
 ---
@@ -178,15 +181,29 @@ Options:
 ## score — help
 
 ```sh
-Usage: music score <thing> [options]
+Usage: music score <command> [options]
 
-Things:
-  progression    Score functional strength, cadence weight
-  melody         Score tension density and resolution
-  chord          Score color/tension profile
+Commands:
+  progression  Score functional strength and cadence weight
+  melody       Score melodic tension density and resolution
+  chord        Score chord color/tension profile
+  help         Print command-specific help
 
-Options:
-  --json             JSON output
+Shared options:
+  --format <fmt>     text (default) or json
+
+Progression options:
+  --progression <I,ii,V>    Roman numerals separated by commas
+  --in <Key>                Optional key hint surfaced in commentary
+
+Melody options:
+  --notes <60,62,...>       Comma-separated MIDI-like indices
+  --in <Key>                Optional key/context label for the report
+  --system <id>             Pitch system for note labels (default 12tet)
+
+Chord options:
+  --notes <60,64,67>        Comma-separated MIDI-like indices (root→top)
+  --system <id>             Pitch system for labeling (default 12tet)
 ```
 
 ---

@@ -6,6 +6,12 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
+music-analysis = { path = "../music-analysis" }
 music-engine = { path = "../music-engine" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+midly = "0.5.3"
+
+[dev-dependencies]
+assert_cmd = "2.1.1"
+predicates = "3.1.3"

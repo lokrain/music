@@ -50,8 +50,8 @@ Commands:
   validate       Check correctness of structures (chords, scales, intervals)
   render         Generate diagrams/maps (key graph, chord graph)
   expose         Show internal registries, tunings, pitch systems, modes
-  generate       Create musical material (melodies, progressions, basslines)
-  score          Rate or grade structures (tension, resolution, brightness)
+  generate       Create motif/arpeggio/rhythm seeds parameterized by density
+  score          Heuristic scoring for progressions, melodies, and chords
   extrapolate    Extend or predict continuation of a musical pattern
   explain-diff   Compare two objects and highlight differences
   map            Produce relational maps (keys, chords, mixture sets)
