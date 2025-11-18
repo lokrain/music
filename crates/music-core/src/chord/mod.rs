@@ -1,11 +1,11 @@
-mod catalog;
+mod diatonic;
 mod errors;
 mod implementation;
-mod iterators;
 mod pattern;
+mod quality;
 
-pub use catalog::*;
+pub use diatonic::*;
 pub use errors::*;
 pub use implementation::*;
-pub use iterators::*;
 pub use pattern::*;
+pub use quality::*;

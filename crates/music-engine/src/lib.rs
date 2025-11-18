@@ -3,7 +3,7 @@
 use music_core::{
     AbstractPitch, Pitch, PitchSystem, PitchSystemId, TuningRegistry,
     pitch::PitchError,
-    systems::{TwelveTET, TwentyFourTET},
+    systems::{CentsScale, JustIntonation, TwelveTET, TwentyFourTET},
 };
 
 /// Primary access point for pitch/tuning utilities across crates.
@@ -30,7 +30,12 @@ impl MusicEngine {
     pub fn with_default_systems() -> Self {
         let registry = TuningRegistry::new()
             .with_system(PitchSystemId::from("12tet"), TwelveTET::a4_440())
-            .with_system(PitchSystemId::from("24tet"), TwentyFourTET::a4_440());
+            .with_system(PitchSystemId::from("24tet"), TwentyFourTET::a4_440())
+            .with_system(PitchSystemId::from("just"), JustIntonation::a4_440_major())
+            .with_system(
+                PitchSystemId::from("quarter"),
+                CentsScale::a4_440_quarter_tone(),
+            );
         Self { registry }
     }
 

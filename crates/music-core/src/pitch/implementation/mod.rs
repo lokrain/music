@@ -13,7 +13,7 @@ use super::PitchError;
 /// # Errors
 ///
 /// Returns [`PitchError::InvalidLiteralFrequency`] when `freq` is non-finite or not positive.
-pub const fn validate_literal_frequency(freq: f32) -> Result<f32, PitchError> {
+pub(super) const fn validate_literal_frequency(freq: f32) -> Result<f32, PitchError> {
     if freq.is_finite() && freq.is_sign_positive() {
         Ok(freq)
     } else {

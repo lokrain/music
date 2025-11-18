@@ -26,6 +26,7 @@
 
 extern crate alloc;
 
+pub mod chord;
 pub mod interval;
 pub mod pitch;
 pub mod prelude;
@@ -34,6 +35,7 @@ pub mod scale;
 pub mod system;
 pub mod systems;
 
+pub use chord::*;
 pub use interval::*;
 pub use pitch::*;
 pub use registry::*;

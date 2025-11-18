@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
 music-engine = { path = "../music-engine" }
+serde = { workspace = true }
+serde_json = { workspace = true }

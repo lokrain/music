@@ -65,6 +65,202 @@ All crates share workspace lint/test configuration to guarantee consistent behav
 	 cargo nextest run --workspace --all-features
 	 ```
 
+## music-cli capabilities
+
+The `music-cli` crate ships with a handful of production-ready commands that mirror the specifications in `CLI.md`/`HELP.md`. Everything routes through `cargo run -p music-cli -- …` in development, or the installed `music` binary in production.
+
+### Enumerations (`music list …`)
+
+**List tuning systems**
+
+```bash
+cargo run -p music-cli -- list systems
+```
+
+```
+4 tuning systems registered (reference index 69).
+	• 12tet: 440.000 Hz at index 69 — 12-TET(69)
+	• …
+```
+
+**List diatonic chords**
+
+```bash
+cargo run -p music-cli -- list chords --root 60 --system 12tet --scale major --voicing triads
+```
+
+```
+7 Triads derived from the Major scale in 12tet (root 60 …)
+I    (degree 1): MajorTriad
+	• tone 0: 12-TET(60) (261.626 Hz)
+	• …
+```
+
+**List modal rotations**
+
+```bash
+cargo run -p music-cli -- list modes --scale dorian
+```
+
+```
+7 mode(s) derived from the Dorian scale (root 60) in 12tet.
+ 1. Dorian (rotation 1, root 12-TET(60))
+		• degree 1: 12-TET(60) (261.626 Hz)
+		• …
+```
+
+`music expose tunings` and `music expose modes` reuse the same logic as the `list` verbs, so they surface identical data under the “expose” namespace.
+
+### Inspecting objects
+
+Describe a single pitch index inside a tuning system:
+
+```bash
+cargo run -p music-cli -- inspect pitch --index 69 --system 12tet
+```
+
+```
+Pitch 69 in 12tet: 12-TET(69) (440.000 Hz)
+```
+
+### Explaining theory objects (`music explain …`)
+
+**Explain a pitch**
+
+```bash
+cargo run -p music-cli -- explain pitch --index 69 --system 12tet --in Cmaj
+```
+
+```
+Pitch 69 in 12tet: 12-TET(69) (440.000 Hz)
+Octave 4, pitch class 9 (A).
+Relative to A4: +0 semitone(s), +0.0 cents.
+In 12-TET(60) Major, this is degree 6 (submediant), functioning as tonic.
+
+12-TET(69) sits in octave 4 and resonates at 440.000 Hz inside 12tet.
+
+It matches the concert A4 reference exactly.
+```
+
+**Explain a scale**
+
+```bash
+cargo run -p music-cli -- explain scale --root 60 --system 12tet --scale major --degrees 7
+```
+
+```
+Scale explanation: Major rooted at 12-TET(60) (60) in 12tet.
+Alias/rotation: Ionian.
+Step pattern: step 1: 200.0 cents, …, step 7: 100.0 cents.
+	• Degree 1 (12-TET(60)) — tonic, 261.626 Hz, 0.0 cents.
+	• Degree 2 (12-TET(62)) — supertonic, 293.665 Hz, 200.0 cents +2 st.
+	• Degree 3 (12-TET(64)) — mediant, 329.628 Hz, 400.0 cents +4 st.
+	• Degree 4 (12-TET(65)) — subdominant, 349.228 Hz, 500.0 cents +5 st.
+	• Degree 5 (12-TET(67)) — dominant, 391.995 Hz, 700.0 cents +7 st.
+	• Degree 6 (12-TET(69)) — submediant, 440.000 Hz, 900.0 cents +9 st.
+	• Degree 7 (12-TET(71)) — leading tone, 493.883 Hz, 1100.0 cents +11 st.
+
+The Major template covers roughly 1.00 octave(s) in 12tet.
+
+Degree 7 (12-TET(71)) stretches to 493.883 Hz and acts as leading tone tension.
+```
+
+**Explain a chord**
+
+```bash
+cargo run -p music-cli -- explain chord --root 60 --system 12tet --scale major --degree 5 --voicing triads
+```
+
+```
+Chord explanation in 12tet: Major rooted at 12-TET(60) 60 (Triads).
+Degree 5 (V) — MajorTriad, function: dominant.
+	• tone 0: 12-TET(67) (391.995 Hz)
+	• tone 1: 12-TET(71) (493.883 Hz)
+	• tone 2: 12-TET(74) (587.330 Hz)
+
+Stacked thirds produce a MajorTriad with 3 tone(s), emphasizing its dominant pull.
+
+Root tone 12-TET(67) anchors the chord before the remaining voices outline the interval profile.
+```
+
+### Analyzing inputs (`music analyze …`)
+
+**Melody statistics**
+
+```bash
+cargo run -p music-cli -- analyze melody --notes 60,62,64,65,67,69
+```
+
+```
+Melody analysis: 6 notes (6 unique pitch classes).
+Ambitus: 9 semitones (lowest 60, highest 69).
+Best key: 12-TET(60) Major — match 100.0%
+Tension: 0 notes (0.0%) outside the implied scale.
+Pitch-class histogram:
+	pc  0: 1
+	pc  2: 1
+	pc  4: 1
+	pc  5: 1
+	pc  7: 1
+	pc  9: 1
+```
+
+**Chord function balance**
+
+```bash
+cargo run -p music-cli -- analyze chords --progression I,vi,ii,V --in Cmaj
+```
+
+```
+Chord progression (4 chords, 4 unique):
+	I → vi → ii → V
+Functional counts: tonic 2, predominant 1, dominant 1, other 0.
+Cadence: none detected.
+Context key hint: Cmaj.
+```
+
+**MIDI file summary**
+
+```bash
+cargo run -p music-cli -- analyze midi --file /tmp/example.mid
+```
+
+```
+MIDI file: /tmp/example.mid (25 bytes).
+Standard MIDI header detected.
+Declared format: 0, tracks: Some(1), detected chunks: 1.
+Ticks per quarter note: 480.
+```
+
+### Suggesting reharmonizations
+
+`Suggest::Reharm` enumerates parallel modes and surfaces chords that match an optional degree target:
+
+```bash
+cargo run -p music-cli -- suggest reharm --root 60 --system 12tet --scale major --voicing triads --degree 1
+```
+
+```
+Parallel-mode reharmonization for the Major scale (root 60) in 12tet — Triads.
+Target degree 1: 12-TET(60) (261.626 Hz).
+
+ 1. Ionian (rotation 1, root 12-TET(60))
+	 * I    (degree 1) — MajorTriad, root 12-TET(60)
+ 2. Dorian (rotation 2, root 12-TET(62))
+		(no matching chords)
+	…
+```
+
+### Placeholder verbs
+
+The remaining top-level verbs (`convert`, `validate`, `render`, `generate`, `score`, `extrapolate`, `explain-diff`, `map`, `profile`, `interpolate`, `search`, `estimate`, `resolve`) currently emit a friendly placeholder via `handle_placeholder`:
+
+```
+`music <verb>` is not implemented yet. Use `music <verb> --help` to preview its planned behavior.
+```
+
+This keeps the UX honest while the specs mature.
+
 ## Developer Workflow
 
 - **Nextest** (default) — high-parallel tests with deterministic reporting:

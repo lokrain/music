@@ -1,25 +1,57 @@
-use music_engine::prelude::*;
+use std::process;
+
+use anyhow::Result;
+use clap::Parser;
+use music_engine::MusicEngine;
+
+mod cli;
+mod format;
+mod handlers;
+mod responses;
+mod theory;
+
+use crate::{
+    cli::{Cli, Command},
+    handlers::{
+        handle_analyze, handle_explain, handle_expose, handle_inspect, handle_list,
+        handle_placeholder, handle_suggest,
+    },
+};
 
 fn main() {
-    let mut args = std::env::args().skip(1);
-    let index = args
-        .next()
-        .and_then(|value| value.parse::<i32>().ok())
-        .unwrap_or(69);
-    let system_id = args.next().unwrap_or_else(|| "12tet".to_string());
+    if let Err(error) = run() {
+        eprintln!("{error:?}");
+        process::exit(1);
+    }
+}
 
+fn run() -> Result<()> {
+    let cli = Cli::parse();
     let engine = MusicEngine::with_default_systems();
-    let pitch = Pitch::abstract_pitch(index, PitchSystemId::from(system_id.clone()));
+    dispatch(&engine, cli)
+}
 
-    match (engine.describe_pitch(&pitch), engine.resolve_pitch(&pitch)) {
-        (Ok(name), Ok(freq)) => {
-            println!(
-                "Pitch {index} in {system}: {name} ({freq:.3} Hz)",
-                system = system_id
-            );
-        }
-        (Err(err), _) | (_, Err(err)) => {
-            eprintln!("Failed to resolve pitch: {err}");
-        }
+fn dispatch(engine: &MusicEngine, cli: Cli) -> Result<()> {
+    let Cli { format, command } = cli;
+    match command {
+        Command::List { command } => handle_list(engine, format, command),
+        Command::Inspect { command } => handle_inspect(engine, format, command),
+        Command::Analyze { command } => handle_analyze(engine, format, command),
+        Command::Suggest { command } => handle_suggest(engine, format, command),
+        Command::Explain { command } => handle_explain(engine, format, command),
+        Command::Convert => handle_placeholder("convert"),
+        Command::Validate => handle_placeholder("validate"),
+        Command::Render => handle_placeholder("render"),
+        Command::Expose { command } => handle_expose(engine, format, command),
+        Command::Generate => handle_placeholder("generate"),
+        Command::Score => handle_placeholder("score"),
+        Command::Extrapolate => handle_placeholder("extrapolate"),
+        Command::ExplainDiff => handle_placeholder("explain-diff"),
+        Command::Map => handle_placeholder("map"),
+        Command::Profile => handle_placeholder("profile"),
+        Command::Interpolate => handle_placeholder("interpolate"),
+        Command::Search => handle_placeholder("search"),
+        Command::Estimate => handle_placeholder("estimate"),
+        Command::Resolve => handle_placeholder("resolve"),
     }
 }

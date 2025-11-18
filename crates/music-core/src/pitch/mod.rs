@@ -6,7 +6,7 @@ mod errors;
 mod implementation;
 mod label;
 
-pub use r#abstract::*;
-pub use errors::*;
-pub use implementation::*;
-pub use label::*;
+pub use r#abstract::AbstractPitch;
+pub use errors::PitchError;
+pub use implementation::Pitch;
+pub use label::PitchLabel;
