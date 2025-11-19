@@ -1,9 +1,17 @@
 pub mod analysis;
 pub mod chord;
+pub mod conversion;
 pub mod diff;
 pub mod estimate;
+pub mod extrapolation;
 pub mod generation;
+pub mod interpolation;
 pub mod pitch;
+pub mod profile;
+pub mod reharmonization;
+pub mod render;
 pub mod resolution;
 pub mod scale;
+pub mod scoring;
+pub mod search;
 pub mod validation;

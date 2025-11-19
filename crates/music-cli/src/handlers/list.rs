@@ -3,12 +3,8 @@ use chord::{diatonic_sevenths, diatonic_triads};
 use music_engine::prelude::*;
 
 use crate::{
-    cli::{ChordArgs, ExposeCommand, ListCommand, ModesArgs, SystemsArgs},
-    format::OutputFormat,
-    responses::{
-        ChordListing, ModeListing, ModeSummary, SystemSummary, SystemsListing,
-        collect_mode_pitches, summarize_chord,
-    },
+    cli::{ChordArgs, ExposeCommand, ListCommand, ModesArgs, SystemsArgs}, format::OutputFormat, reports::chord::summarize_chord, responses::{ChordListing, ModeListing, ModeSummary, SystemSummary, SystemsListing, collect_mode_pitches}
+
 };
 
 pub fn handle_list(engine: &MusicEngine, format: OutputFormat, command: ListCommand) -> Result<()> {

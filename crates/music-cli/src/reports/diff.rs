@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::Serialize;

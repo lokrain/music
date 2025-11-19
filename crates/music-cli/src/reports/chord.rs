@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use music_engine::prelude::TuningRegistry;
 use music_engine::prelude::chord::DiatonicChord;
 use serde::Serialize;

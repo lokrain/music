@@ -10,11 +10,15 @@ use crate::{
     cli::{ValidateCommand, ValidateMelodyArgs, ValidateProgressionArgs, ValidateTuningArgs},
     format::OutputFormat,
     handlers::analyze::{FunctionRole, classify_function, detect_cadence, normalize_roman},
-    responses::{
-        Ambitus, FunctionCounts, InvalidMelodyNote, InvalidProgressionToken, LeapViolation,
-        MelodyValidationReport, MonotonicViolation, ProgressionValidationReport, TuningSampleRow,
-        TuningValidationReport,
+    reports::{
+        analysis::Ambitus,
+        validation::{
+            InvalidMelodyNote, InvalidProgressionToken, LeapViolation, MelodyValidationReport,
+            MonotonicViolation, ProgressionValidationReport, TuningSampleRow,
+            TuningValidationReport,
+        },
     },
+    responses::FunctionCounts,
 };
 
 pub fn handle_validate(

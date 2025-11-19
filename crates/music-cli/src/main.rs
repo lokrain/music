@@ -1,3 +1,7 @@
+#![deny(warnings)]
+#![deny(unused_imports)]
+#![deny(dead_code)]
+
 use std::process;
 
 use anyhow::Result;

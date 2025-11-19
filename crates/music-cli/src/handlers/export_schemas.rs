@@ -12,6 +12,10 @@ use crate::responses::*;
 
 #[cfg(feature = "schema")]
 pub fn export_schemas(output_dir: &Path) -> Result<()> {
+    use crate::reports::validation::{
+        MelodyValidationReport, ProgressionValidationReport, TuningValidationReport,
+    };
+
     fs::create_dir_all(output_dir)?;
 
     // Macro to export a schema for a given type
