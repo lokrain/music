@@ -86,7 +86,7 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Suggest voice-leading resolutions for active chords, highlighting stepwise options per part and exposing target-system constraints.
 - **Complexity:** 3
 - **Value:** 79
-- **Status:** TODO
+- **Status:** DONE
 
 ### CLI-15 — Add golden tests for `analyze`
 - **Body:** Capture sample CLI outputs (melody, chords, MIDI) under `crates/music-cli/tests` to lock text + JSON schemas against regressions.
@@ -98,7 +98,8 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Define and version JSON schemas for all CLI responses so downstream tools can validate outputs programmatically.
 - **Complexity:** 2
 - **Value:** 68
-- **Status:** TODO
+- **Status:** DONE
+	- **Notes:** Implemented schema export via hidden `export-schemas` command (enabled with `schema` feature). Added schemars::JsonSchema derives to all 60+ response structs across reports modules. Exports 41 JSON Schema files. Partial modularization completed: extracted ~600 lines from responses.rs into 5 report modules (pitch, chord, resolution, estimate, generation); responses.rs remains at 2069 lines and requires continued splitting (follow-up refactor task recommended). Schema export tested with 2 integration tests. Feature fully functional and ready for downstream validation use cases.
 
 ## Core & Theory Work
 
@@ -106,13 +107,15 @@ All entries follow a light Jira format with a short code, descriptive title, bod
 - **Body:** Complete the split across `crates/music-core/src/interval/**`, ensuring docs, prelude exports, and backward-compatible APIs are restored.
 - **Complexity:** 3
 - **Value:** 85
-- **Status:** TODO
+- **Status:** DONE
+	- **Notes:** Interval module split into errors.rs (77L), implementation.rs (233L), mod.rs (38L). All files <300L ✓. Added comprehensive module-level docs with examples to mod.rs, errors.rs, implementation.rs. Backward-compatible APIs confirmed: lib.rs has `pub use interval::*` re-exporting Interval, IntervalError, IntervalBetweenError; prelude.rs re-exports all via `pub use crate::*`. Existing tests (20 interval_tests.rs) pass. Implementation.rs at 92.19% line coverage; errors.rs at 8.57% (Display impls not exercised, but core logic tested). Workspace tests: 145/145 passing. Overall workspace coverage 54.91% (gap from legacy untested CLI handlers, not interval module).
 
 ### CORE-2 — Chord quality taxonomy
 - **Body:** Populate `crates/music-core/src/chord` with canonical qualities, inversions, and parsing helpers usable by analysis + CLI layers.
 - **Complexity:** 3
 - **Value:** 88
-- **Status:** TODO
+- **Status:** DONE
+	- **Notes:** Extended ChordQuality enum from 12 to 22 qualities (added Dominant9, Major9, Minor9, Add9, Dominant11, Major11, Minor11, Dominant13, Major13, Minor13). Created Inversion enum (Root, First, Second, Third, Higher) with detection logic via Chord::detect_inversion(). Implemented chord symbol parsing (parse_chord_symbol) supporting common notations ("Cmaj7", "F#m", "Bb7", etc.). All chord files <300 lines (largest: parsing.rs 224L, quality.rs 168L). New types exported via mod.rs. Added 22 comprehensive tests covering extended qualities, inversion detection, parsing, and round-trips. All 167 workspace tests passing. Chord module coverage: parsing.rs 82%, implementation.rs 74%, pattern.rs 76%. Overall workspace coverage 56.28% (gap from legacy untested CLI handlers). New chord features fully functional and ready for CLI/analysis integration.
 
 ### CORE-3 — Scale catalog expansion
 - **Body:** Flesh out `scale/catalog.rs` with diatonic, symmetric, and world-music collections plus metadata (modes, degrees, defaults).

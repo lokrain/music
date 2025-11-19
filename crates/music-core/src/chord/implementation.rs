@@ -6,7 +6,7 @@ use crate::{
     system::PitchSystemId,
 };
 
-use super::{errors::ChordBuildError, pattern::ChordPattern};
+use super::{errors::ChordBuildError, inversion::Inversion, pattern::ChordPattern};
 
 /// Collection of chord tones anchored at a root pitch.
 #[derive(Debug, Clone)]
@@ -98,5 +98,38 @@ impl Chord {
         let interval = &self.pattern.intervals()[index];
         let pitch = interval.apply_to(&self.root, registry)?;
         Ok(Some(pitch))
+    }
+
+    /// Detect the inversion of a voiced chord by finding which tone appears as the bass.
+    ///
+    /// This method accepts a slice of voiced pitches (typically lowest to highest) and determines
+    /// which chord tone matches the bass pitch, returning the corresponding inversion.
+    ///
+    /// Returns `None` if the bass pitch does not match any chord tone.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`PitchError`] when resolving chord tones through the registry.
+    pub fn detect_inversion(
+        &self,
+        voiced_pitches: &[Pitch],
+        registry: &TuningRegistry,
+    ) -> Result<Option<Inversion>, PitchError> {
+        if voiced_pitches.is_empty() {
+            return Ok(None);
+        }
+
+        let bass = &voiced_pitches[0];
+        let bass_freq = bass.try_freq_hz(registry)?;
+        let tones = self.tones(registry)?;
+
+        for (index, tone) in tones.iter().enumerate() {
+            let tone_freq = tone.try_freq_hz(registry)?;
+            if (tone_freq - bass_freq).abs() < 1.0 {
+                return Ok(Some(Inversion::from_bass_index(index)));
+            }
+        }
+
+        Ok(None)
     }
 }

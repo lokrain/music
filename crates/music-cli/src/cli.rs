@@ -118,8 +118,18 @@ pub enum Command {
         #[command(subcommand)]
         command: EstimateCommand,
     },
-    #[command(about = "Suggest resolution paths for tensions or non-chord tones")]
-    Resolve,
+    #[command(about = "Suggest voice-leading resolutions for tensions or non-chord tones")]
+    Resolve {
+        #[command(subcommand)]
+        command: ResolveCommand,
+    },
+    #[cfg(feature = "schema")]
+    #[command(about = "Export JSON schemas for all response types", hide = true)]
+    ExportSchemas {
+        /// Output directory for schema files
+        #[arg(long, default_value = "schemas")]
+        output_dir: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -146,6 +156,44 @@ pub enum GenerateCommand {
 pub enum MapCommand {
     #[command(about = "Render a pitch-class map for a scale in a system")]
     Scale(MapScaleArgs),
+}
+
+#[derive(Subcommand)]
+pub enum ResolveCommand {
+    #[command(about = "Resolve a chord (e.g., V7) to tonic in a key")]
+    Chord(ResolveChordArgs),
+    #[command(about = "Resolve arbitrary notes to nearest tonic-triad tones")]
+    Notes(ResolveNotesArgs),
+}
+
+#[derive(Args)]
+pub struct ResolveChordArgs {
+    /// Roman numeral chord to resolve (e.g., V7, V, ii°, iv).
+    #[arg(long = "chord")]
+    pub chord: String,
+
+    /// Key context (e.g., Cmaj, Amin).
+    #[arg(long = "in", value_name = "KEY")]
+    pub key: String,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
+}
+
+#[derive(Args)]
+pub struct ResolveNotesArgs {
+    /// Comma-separated list of MIDI-like pitch indices to resolve.
+    #[arg(long = "notes", value_delimiter = ',', num_args = 1..)]
+    pub notes: Vec<i32>,
+
+    /// Key context (e.g., Cmaj, Amin).
+    #[arg(long = "in", value_name = "KEY")]
+    pub key: String,
+
+    /// Pitch system identifier registered with the engine.
+    #[arg(short, long, default_value = "12tet")]
+    pub system: String,
 }
 
 #[derive(Subcommand)]

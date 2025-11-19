@@ -4,515 +4,166 @@ use std::fmt::Write as FmtWrite;
 
 use chord::DiatonicChord;
 use music_engine::prelude::{Pitch, PitchError, Scale, TuningRegistry, chord};
+// Re-export modularized report types
+pub use crate::reports::analysis::*;
+pub use crate::reports::chord::*;
+#[cfg(feature = "schema")]
+pub use crate::reports::diff::*;
+pub use crate::reports::generation::*;
+pub use crate::reports::pitch::*;
+pub use crate::reports::resolution::*;
+pub use crate::reports::scale::*;
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::Serialize;
 
 pub type PitchResult<T> = Result<T, PitchError>;
 
-#[derive(Debug, Serialize)]
-pub struct PitchSummary {
-    pub system: String,
-    pub index: i32,
-    pub label: String,
-    pub frequency_hz: f32,
-}
+// Pitch-related types have moved to reports/pitch.rs
 
-impl PitchSummary {
-    pub fn render_text(&self) -> String {
-        format!(
-            "Pitch {index} in {system}: {label} ({freq:.3} Hz)",
-            index = self.index,
-            system = self.system,
-            label = self.label,
-            freq = self.frequency_hz
-        )
-    }
+// Chord-related report types moved to reports/chord.rs
+
+// Generation-related report types moved to reports/generation.rs
+
+#[derive(Debug, Serialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct InterpolatedPoint {
+    pub time: f32,
+    pub value: f32,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PitchExplanation {
-    pub summary: PitchSummary,
-    pub octave: i32,
-    pub pitch_class: u8,
-    pub pitch_class_label: String,
-    pub semitone_delta_from_a4: i32,
-    pub cents_offset_from_a4: f32,
-    pub context: Option<PitchContext>,
-    pub narrative: Vec<String>,
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct InterpolationContext {
+    pub curve: String,
+    pub samples: usize,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PitchContext {
-    pub key: String,
-    pub mode: String,
-    pub degree: usize,
-    pub degree_label: String,
-    pub function: String,
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct InterpolatedEnvelopeReport {
+    pub context: InterpolationContext,
+    pub unit: String,
+    pub anchors: Vec<InterpolatedPoint>,
+    pub samples: Vec<InterpolatedPoint>,
 }
 
-impl PitchExplanation {
+impl InterpolatedEnvelopeReport {
     pub fn render_text(&self) -> String {
         let mut out = String::new();
-        let summary = self.summary.render_text();
-        let _ = writeln!(&mut out, "{summary}");
         let _ = writeln!(
             &mut out,
-            "Octave {octave}, pitch class {pc} ({label}).",
-            octave = self.octave,
-            pc = self.pitch_class,
-            label = self.pitch_class_label
+            "Interpolation ({unit}) — curve {curve}, {count} anchors, {samples} samples.",
+            unit = self.unit,
+            curve = self.context.curve,
+            count = self.anchors.len(),
+            samples = self.samples.len()
         );
-        let _ = writeln!(
-            &mut out,
-            "Relative to A4: {delta:+} semitone(s), {cents:+.1} cents.",
-            delta = self.semitone_delta_from_a4,
-            cents = self.cents_offset_from_a4
-        );
-        if let Some(context) = &self.context {
+        let _ = writeln!(&mut out, "Anchors:");
+        for anchor in &self.anchors {
             let _ = writeln!(
                 &mut out,
-                "In {key} {mode}, this is degree {degree} ({label}), functioning as {function}.",
-                key = context.key,
-                mode = context.mode,
-                degree = context.degree,
-                label = context.degree_label,
-                function = context.function
+                "  t={time:>5.2} → {value:>7.3}",
+                time = anchor.time,
+                value = anchor.value
             );
         }
-        for paragraph in &self.narrative {
-            let _ = writeln!(&mut out);
-            let _ = writeln!(&mut out, "{paragraph}");
+        let _ = writeln!(&mut out, "Samples:");
+        for point in &self.samples {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>7.3}",
+                time = point.time,
+                value = point.value
+            );
         }
         out
     }
 }
 
 #[derive(Debug, Serialize)]
-pub struct ChordListing {
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct VelocityEnvelopeReport {
+    pub context: InterpolationContext,
+    pub anchors: Vec<InterpolatedPoint>,
+    pub samples: Vec<InterpolatedPoint>,
+    pub min_value: i32,
+    pub max_value: i32,
+}
+
+impl VelocityEnvelopeReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Velocity interpolation [{min}..{max}] — curve {curve}, {count} anchors.",
+            min = self.min_value,
+            max = self.max_value,
+            curve = self.context.curve,
+            count = self.anchors.len()
+        );
+        let _ = writeln!(&mut out, "Anchors:");
+        for anchor in &self.anchors {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>6.1}",
+                time = anchor.time,
+                value = anchor.value
+            );
+        }
+        let _ = writeln!(&mut out, "Samples:");
+        for point in &self.samples {
+            let _ = writeln!(
+                &mut out,
+                "  t={time:>5.2} → {value:>6.1}",
+                time = point.time,
+                value = point.value
+            );
+        }
+        out
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ChordSearchReport {
     pub system: String,
-    pub root_index: i32,
-    pub root_label: Option<String>,
-    pub scale: String,
+    pub criteria: Vec<u8>,
     pub voicing: String,
-    pub chord_count: usize,
-    pub chords: Vec<ChordDetails>,
-}
-
-impl ChordListing {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root = self
-            .root_label
-            .as_deref()
-            .map(|value| format!(" ({value})"))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "{count} {voicing} derived from the {scale} scale in {system} (root {index}{root}).",
-            count = self.chord_count,
-            voicing = self.voicing,
-            scale = self.scale,
-            system = self.system,
-            index = self.root_index,
-            root = root
-        );
-        let _ = writeln!(&mut out);
-
-        for chord in &self.chords {
-            let quality = chord
-                .quality
-                .as_deref()
-                .map(str::to_string)
-                .unwrap_or_else(|| "Unclassified".into());
-            let _ = writeln!(
-                &mut out,
-                "{numeral:<4} (degree {degree}): {quality}",
-                numeral = chord.numeral,
-                degree = chord.degree + 1,
-                quality = quality
-            );
-            for tone in &chord.tones {
-                let label = tone.label.as_deref().unwrap_or("—");
-                let _ = writeln!(
-                    &mut out,
-                    "  • tone {index}: {label} ({freq:.3} Hz)",
-                    index = tone.index,
-                    label = label,
-                    freq = tone.frequency_hz
-                );
-            }
-            let _ = writeln!(&mut out);
-        }
-
-        out
-    }
+    pub match_count: usize,
+    pub matches: Vec<ChordSearchMatch>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ChordDetails {
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ChordSearchMatch {
+    pub scale: String,
     pub degree: usize,
     pub numeral: String,
-    pub quality: Option<String>,
-    pub tones: Vec<ChordToneSummary>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChordToneSummary {
-    pub index: usize,
-    pub label: Option<String>,
-    pub frequency_hz: f32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChordExplanation {
-    pub system: String,
-    pub scale_name: String,
-    pub scale_root_index: i32,
-    pub scale_root_label: Option<String>,
-    pub voicing: String,
-    pub summary: ChordDetails,
-    pub function: String,
-    pub narrative: Vec<String>,
-}
-
-impl ChordExplanation {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root_label = self
-            .scale_root_label
-            .as_deref()
-            .map(|label| format!("{label} "))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "Chord explanation in {system}: {scale} rooted at {root_label}{root_index} ({voicing}).",
-            system = self.system,
-            scale = self.scale_name,
-            root_label = root_label,
-            root_index = self.scale_root_index,
-            voicing = self.voicing
-        );
-        let quality = self.summary.quality.as_deref().unwrap_or("Unclassified");
-        let _ = writeln!(
-            &mut out,
-            "Degree {degree} ({numeral}) — {quality}, function: {function}.",
-            degree = self.summary.degree + 1,
-            numeral = self.summary.numeral,
-            quality = quality,
-            function = self.function
-        );
-        for tone in &self.summary.tones {
-            let label = tone.label.as_deref().unwrap_or("—");
-            let _ = writeln!(
-                &mut out,
-                "  • tone {idx}: {label} ({freq:.3} Hz)",
-                idx = tone.index,
-                label = label,
-                freq = tone.frequency_hz
-            );
-        }
-        for paragraph in &self.narrative {
-            let _ = writeln!(&mut out);
-            let _ = writeln!(&mut out, "{paragraph}");
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct PatternContext {
-    pub system: String,
-    pub scale: String,
-    pub root_index: i32,
-    pub root_label: Option<String>,
-    pub density: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GeneratedNote {
-    pub degree: usize,
-    pub octave: i32,
-    pub index: i32,
-    pub label: Option<String>,
-    pub frequency_hz: f32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MotifGeneration {
-    pub context: PatternContext,
-    pub note_count: usize,
-    pub contour: Vec<i32>,
-    pub notes: Vec<GeneratedNote>,
-    pub description: String,
-}
-
-impl MotifGeneration {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root_label = self
-            .context
-            .root_label
-            .as_deref()
-            .map(|label| format!(" ({label})"))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "Motif ({density}) in {scale} / {system}, root {root}{root_label}.",
-            density = self.context.density,
-            scale = self.context.scale,
-            system = self.context.system,
-            root = self.context.root_index,
-            root_label = root_label
-        );
-        if !self.description.is_empty() {
-            let _ = writeln!(&mut out, "{desc}", desc = self.description);
-        }
-        if !self.contour.is_empty() {
-            let markings: Vec<String> = self
-                .contour
-                .iter()
-                .enumerate()
-                .map(|(idx, delta)| format!("Δ{step:02} {delta:+}", step = idx + 1, delta = delta))
-                .collect();
-            let _ = writeln!(&mut out, "Contour: {values}.", values = markings.join(", "));
-        }
-        for (idx, note) in self.notes.iter().enumerate() {
-            let label = note.label.as_deref().unwrap_or("—");
-            let _ = writeln!(
-                &mut out,
-                "  {order:>2}. degree {degree}{octave:+}, index {index}, {label} ({freq:.3} Hz)",
-                order = idx + 1,
-                degree = note.degree,
-                octave = note.octave,
-                index = note.index,
-                label = label,
-                freq = note.frequency_hz
-            );
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ArpeggioStep {
-    pub order: usize,
-    pub direction: String,
-    #[serde(flatten)]
-    pub note: GeneratedNote,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ArpeggioGeneration {
-    pub context: PatternContext,
-    pub register_span: i32,
-    pub steps: Vec<ArpeggioStep>,
-    pub description: String,
-}
-
-impl ArpeggioGeneration {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root_label = self
-            .context
-            .root_label
-            .as_deref()
-            .map(|label| format!(" ({label})"))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "Arpeggio ({density}) in {scale} / {system}, root {root}{root_label}. Span {span} semitones.",
-            density = self.context.density,
-            scale = self.context.scale,
-            system = self.context.system,
-            root = self.context.root_index,
-            root_label = root_label,
-            span = self.register_span
-        );
-        if !self.description.is_empty() {
-            let _ = writeln!(&mut out, "{desc}", desc = self.description);
-        }
-        for step in &self.steps {
-            let label = step.note.label.as_deref().unwrap_or("—");
-            let _ = writeln!(
-                &mut out,
-                "  {order:>2}. [{direction:^4}] degree {degree}{octave:+}, index {index}, {label} ({freq:.3} Hz)",
-                order = step.order,
-                direction = step.direction,
-                degree = step.note.degree,
-                octave = step.note.octave,
-                index = step.note.index,
-                label = label,
-                freq = step.note.frequency_hz
-            );
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct RhythmEvent {
-    pub beat: f32,
-    pub duration_beats: f32,
-    pub accent: bool,
-    pub suggested_degree: usize,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RhythmCellGeneration {
-    pub context: PatternContext,
-    pub meter: String,
-    pub length_beats: f32,
-    pub events: Vec<RhythmEvent>,
-    pub description: String,
-}
-
-impl RhythmCellGeneration {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root_label = self
-            .context
-            .root_label
-            .as_deref()
-            .map(|label| format!(" ({label})"))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "Rhythm cell ({density}) for {scale} / {system}, root {root}{root_label}, meter {meter}, {beats:.1} beats.",
-            density = self.context.density,
-            scale = self.context.scale,
-            system = self.context.system,
-            root = self.context.root_index,
-            root_label = root_label,
-            meter = self.meter,
-            beats = self.length_beats
-        );
-        if !self.description.is_empty() {
-            let _ = writeln!(&mut out, "{desc}", desc = self.description);
-        }
-        if self.events.is_empty() {
-            return out;
-        }
-
-        let _ = writeln!(&mut out, "  beat  dur  acc  degree");
-        for event in &self.events {
-            let accent = if event.accent { "*" } else { "." };
-            let _ = writeln!(
-                &mut out,
-                "  {beat:>4.1}  {dur:>3.1}   {accent}     {degree}",
-                beat = event.beat,
-                dur = event.duration_beats,
-                accent = accent,
-                degree = event.suggested_degree
-            );
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ScaleExplanation {
-    pub system: String,
-    pub root_index: i32,
     pub root_label: String,
-    pub scale_name: String,
-    pub mode_alias: Option<String>,
-    pub degrees: Vec<ScaleDegreeSummary>,
-    pub pattern_cents: Vec<f32>,
-    pub narrative: Vec<String>,
+    pub pitch_classes: Vec<u8>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ScaleDegreeSummary {
-    pub degree: usize,
-    pub label: String,
-    pub frequency_hz: f32,
-    pub interval_cents: f32,
-    pub semitone_offset: Option<i32>,
-    pub role: String,
-}
-
-impl ScaleExplanation {
+impl ChordSearchReport {
     pub fn render_text(&self) -> String {
         let mut out = String::new();
         let _ = writeln!(
             &mut out,
-            "Scale explanation: {scale} rooted at {label} ({root_index}) in {system}.",
-            scale = self.scale_name,
-            label = self.root_label,
-            root_index = self.root_index,
-            system = self.system
+            "Chord search ({voicing}) in {system}: {count} match(es) for pcs {pcs:?}.",
+            voicing = self.voicing,
+            system = self.system,
+            count = self.match_count,
+            pcs = self.criteria
         );
-        if let Some(alias) = &self.mode_alias {
-            let _ = writeln!(&mut out, "Alias/rotation: {alias}.");
-        }
-        if !self.pattern_cents.is_empty() {
-            let descriptions: Vec<String> = self
-                .pattern_cents
-                .iter()
-                .enumerate()
-                .map(|(idx, cents)| {
-                    let step = idx + 1;
-                    format!("step {step}: {cents:.1} cents", step = step, cents = cents)
-                })
-                .collect();
+        for entry in &self.matches {
             let _ = writeln!(
                 &mut out,
-                "Step pattern: {pattern}.",
-                pattern = descriptions.join(", ")
-            );
-        }
-        for degree in &self.degrees {
-            let offset = degree
-                .semitone_offset
-                .map(|value| format!(" {value:+} st"))
-                .unwrap_or_default();
-            let _ = writeln!(
-                &mut out,
-                "  • Degree {deg} ({label}) — {role}, {freq:.3} Hz, {cents:.1} cents{offset}.",
-                deg = degree.degree,
-                label = degree.label,
-                role = degree.role,
-                freq = degree.frequency_hz,
-                cents = degree.interval_cents,
-                offset = offset
-            );
-        }
-        for paragraph in &self.narrative {
-            let _ = writeln!(&mut out);
-            let _ = writeln!(&mut out, "{paragraph}");
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct SystemsListing {
-    pub reference_index: i32,
-    pub systems: Vec<SystemSummary>,
-}
-
-impl SystemsListing {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let count = self.systems.len();
-        let _ = writeln!(
-            &mut out,
-            "{count} tuning systems registered (reference index {reference}).",
-            count = count,
-            reference = self.reference_index
-        );
-        for system in &self.systems {
-            let label = system
-                .label
-                .as_deref()
-                .map(|value| format!(" — {value}"))
-                .unwrap_or_default();
-            let _ = writeln!(
-                &mut out,
-                "  • {id}: {freq:.3} Hz at index {index}{label}",
-                id = system.id,
-                freq = system.frequency_hz,
-                index = system.reference_index,
-                label = label
+                "  - {scale} degree {degree} ({numeral}) root {root}, pcs {pcs:?}.",
+                scale = entry.scale,
+                degree = entry.degree,
+                numeral = entry.numeral,
+                root = entry.root_label,
+                pcs = entry.pitch_classes
             );
         }
         out
@@ -520,86 +171,7 @@ impl SystemsListing {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SystemSummary {
-    pub id: String,
-    pub reference_index: i32,
-    pub frequency_hz: f32,
-    pub label: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ModeListing {
-    pub system: String,
-    pub root_index: i32,
-    pub scale: String,
-    pub mode_count: usize,
-    pub modes: Vec<ModeSummary>,
-}
-
-impl ModeListing {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "{count} mode(s) derived from the {scale} scale (root {root}) in {system}.",
-            count = self.mode_count,
-            scale = self.scale,
-            root = self.root_index,
-            system = self.system
-        );
-        let _ = writeln!(&mut out);
-
-        for mode in &self.modes {
-            let title = mode
-                .mode_name
-                .as_deref()
-                .map(str::to_string)
-                .unwrap_or_else(|| format!("Mode {}", mode.mode_index));
-            let root_label = mode.root_label.as_deref().unwrap_or("—");
-            let _ = writeln!(
-                &mut out,
-                "{idx:>2}. {title} (rotation {rotation}, root {root_label})",
-                idx = mode.mode_index,
-                title = title,
-                rotation = mode.rotation_degree + 1,
-                root_label = root_label
-            );
-            for pitch in &mode.pitches {
-                let label = pitch.label.as_deref().unwrap_or("—");
-                let _ = writeln!(
-                    &mut out,
-                    "    • degree {degree}: {label} ({freq:.3} Hz)",
-                    degree = pitch.degree + 1,
-                    label = label,
-                    freq = pitch.frequency_hz
-                );
-            }
-            let _ = writeln!(&mut out);
-        }
-
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ModeSummary {
-    pub mode_index: usize,
-    pub rotation_degree: usize,
-    pub mode_name: Option<String>,
-    pub root_index: Option<i32>,
-    pub root_label: Option<String>,
-    pub pitches: Vec<ModePitch>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ModePitch {
-    pub degree: usize,
-    pub index: Option<i32>,
-    pub label: Option<String>,
-    pub frequency_hz: f32,
-}
-
-#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ReharmListing {
     pub system: String,
     pub root_index: i32,
@@ -680,6 +252,7 @@ impl ReharmListing {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ModeReharm {
     pub mode_index: usize,
     pub rotation_degree: usize,
@@ -690,6 +263,7 @@ pub struct ModeReharm {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BorrowedChord {
     #[serde(flatten)]
     pub details: ChordDetails,
@@ -699,740 +273,9 @@ pub struct BorrowedChord {
     pub matches_target: bool,
 }
 
+// validation reports moved to reports/validation.rs
 #[derive(Debug, Serialize)]
-pub struct MelodyAnalysisReport {
-    pub note_count: usize,
-    pub distinct_pitch_classes: usize,
-    pub ambitus: Ambitus,
-    pub best_key: KeyHypothesis,
-    pub histogram: Vec<PitchClassBin>,
-    pub tension: TensionMetrics,
-}
-
-impl MelodyAnalysisReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Melody analysis: {notes} notes ({classes} unique pitch classes).",
-            notes = self.note_count,
-            classes = self.distinct_pitch_classes
-        );
-        let _ = writeln!(
-            &mut out,
-            "Ambitus: {span} semitones (lowest {low}, highest {high}).",
-            span = self.ambitus.span,
-            low = self.ambitus.lowest,
-            high = self.ambitus.highest
-        );
-        let forced = if self.best_key.enforced {
-            " (forced)"
-        } else {
-            ""
-        };
-        let _ = writeln!(
-            &mut out,
-            "Best key: {label} {mode}{forced} — match {ratio:.1}%",
-            label = self.best_key.tonic_label,
-            mode = self.best_key.mode,
-            forced = forced,
-            ratio = self.best_key.match_ratio * 100.0
-        );
-        let _ = writeln!(
-            &mut out,
-            "Tension: {out_of_scale} notes ({percent:.1}%) outside the implied scale.",
-            out_of_scale = self.tension.out_of_scale,
-            percent = self.tension.percent_out_of_scale
-        );
-        if !self.histogram.is_empty() {
-            let _ = writeln!(&mut out, "Pitch-class histogram:");
-            for bin in &self.histogram {
-                let _ = writeln!(
-                    &mut out,
-                    "  pc {pc:>2}: {count}",
-                    pc = bin.pitch_class,
-                    count = bin.count
-                );
-            }
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct Ambitus {
-    pub lowest: i32,
-    pub highest: i32,
-    pub span: i32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct KeyHypothesis {
-    pub tonic_label: String,
-    pub tonic_pitch_class: u8,
-    pub tonic_index: i32,
-    pub mode: String,
-    pub match_ratio: f32,
-    pub enforced: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PitchClassBin {
-    pub pitch_class: u8,
-    pub count: usize,
-}
-
-#[derive(Debug, Serialize)]
-pub struct TensionMetrics {
-    pub out_of_scale: usize,
-    pub percent_out_of_scale: f32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChordAnalysisReport {
-    pub progression: Vec<String>,
-    pub chord_count: usize,
-    pub unique_chords: usize,
-    pub function_counts: FunctionCounts,
-    pub cadence: Option<CadenceSummary>,
-    pub key_hint: Option<String>,
-}
-
-impl ChordAnalysisReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Chord progression ({count} chords, {unique} unique):",
-            count = self.chord_count,
-            unique = self.unique_chords
-        );
-        let _ = writeln!(&mut out, "  {}", self.progression.join(" → "));
-        let _ = writeln!(
-            &mut out,
-            "Functional counts: tonic {tonic}, predominant {pred}, dominant {dom}, other {other}.",
-            tonic = self.function_counts.tonic,
-            pred = self.function_counts.predominant,
-            dom = self.function_counts.dominant,
-            other = self.function_counts.other
-        );
-        match &self.cadence {
-            Some(cadence) => {
-                let _ = writeln!(
-                    &mut out,
-                    "Cadence: {pattern} — {desc} (confidence {conf:.0}%).",
-                    pattern = cadence.pattern,
-                    desc = cadence.description,
-                    conf = cadence.confidence * 100.0
-                );
-            }
-            None => {
-                let _ = writeln!(&mut out, "Cadence: none detected.");
-            }
-        }
-        if let Some(key) = &self.key_hint {
-            let _ = writeln!(&mut out, "Context key hint: {key}.");
-        }
-        out
-    }
-}
-
-#[derive(Debug, Default, Serialize, Clone, Copy)]
-pub struct FunctionCounts {
-    pub tonic: usize,
-    pub predominant: usize,
-    pub dominant: usize,
-    pub other: usize,
-}
-
-#[derive(Debug, Serialize)]
-pub struct CadenceSummary {
-    pub pattern: String,
-    pub confidence: f32,
-    pub description: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MelodyProfileSummary {
-    pub note_count: usize,
-    pub distinct_pitch_classes: usize,
-    pub ambitus: Ambitus,
-    pub histogram: Vec<PitchClassBin>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MelodyDiffReport {
-    pub system: String,
-    pub key_hint: Option<String>,
-    pub left: MelodyProfileSummary,
-    pub right: MelodyProfileSummary,
-    pub shared_pitch_classes: Vec<u8>,
-    pub left_only_pitch_classes: Vec<u8>,
-    pub right_only_pitch_classes: Vec<u8>,
-    pub histogram_distance: f32,
-    pub commentary: Vec<String>,
-}
-
-impl MelodyDiffReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Melody diff ({system}) — shared pcs {shared:?}, distance {distance:.1}%.",
-            system = self.system,
-            shared = self.shared_pitch_classes,
-            distance = self.histogram_distance * 100.0
-        );
-        if let Some(key) = &self.key_hint {
-            let _ = writeln!(&mut out, "Context key: {key}.");
-        }
-        render_melody_side(&mut out, "Left", &self.left);
-        render_melody_side(&mut out, "Right", &self.right);
-        if !self.left_only_pitch_classes.is_empty() {
-            let _ = writeln!(
-                &mut out,
-                "Left-only pcs: {:?}.",
-                self.left_only_pitch_classes
-            );
-        }
-        if !self.right_only_pitch_classes.is_empty() {
-            let _ = writeln!(
-                &mut out,
-                "Right-only pcs: {:?}.",
-                self.right_only_pitch_classes
-            );
-        }
-        if !self.commentary.is_empty() {
-            let _ = writeln!(&mut out);
-            for note in &self.commentary {
-                let _ = writeln!(&mut out, "- {note}");
-            }
-        }
-        out
-    }
-}
-
-fn render_melody_side(out: &mut String, label: &str, profile: &MelodyProfileSummary) {
-    let _ = writeln!(
-        out,
-        "{label}: {notes} notes, {pcs} unique pcs, ambitus {span} st.",
-        label = label,
-        notes = profile.note_count,
-        pcs = profile.distinct_pitch_classes,
-        span = profile.ambitus.span
-    );
-}
-
-#[derive(Debug, Serialize)]
-pub struct ProgressionProfileSummary {
-    pub progression: Vec<String>,
-    pub chord_count: usize,
-    pub unique_chords: usize,
-    pub function_counts: FunctionCounts,
-    pub cadence: Option<CadenceSummary>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ProgressionDiffReport {
-    pub key_hint: Option<String>,
-    pub left: ProgressionProfileSummary,
-    pub right: ProgressionProfileSummary,
-    pub shared_chords: Vec<String>,
-    pub left_unique: Vec<String>,
-    pub right_unique: Vec<String>,
-    pub commentary: Vec<String>,
-}
-
-impl ProgressionDiffReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Progression diff — shared {shared}, left unique {left}, right unique {right}.",
-            shared = self.shared_chords.len(),
-            left = self.left_unique.len(),
-            right = self.right_unique.len()
-        );
-        if let Some(key) = &self.key_hint {
-            let _ = writeln!(&mut out, "Context key: {key}.");
-        }
-        render_progression_side(&mut out, "Left", &self.left);
-        render_progression_side(&mut out, "Right", &self.right);
-        if !self.shared_chords.is_empty() {
-            let _ = writeln!(
-                &mut out,
-                "Shared chords: {list}.",
-                list = self.shared_chords.join(", ")
-            );
-        }
-        if !self.left_unique.is_empty() {
-            let _ = writeln!(
-                &mut out,
-                "Left-only chords: {list}.",
-                list = self.left_unique.join(", ")
-            );
-        }
-        if !self.right_unique.is_empty() {
-            let _ = writeln!(
-                &mut out,
-                "Right-only chords: {list}.",
-                list = self.right_unique.join(", ")
-            );
-        }
-        if !self.commentary.is_empty() {
-            let _ = writeln!(&mut out);
-            for note in &self.commentary {
-                let _ = writeln!(&mut out, "- {note}");
-            }
-        }
-        out
-    }
-}
-
-fn render_progression_side(out: &mut String, label: &str, profile: &ProgressionProfileSummary) {
-    let _ = writeln!(
-        out,
-        "{label}: {unique}/{total} unique chords, tonic {tonic}, predominant {pred}, dominant {dom}, other {other}.",
-        label = label,
-        unique = profile.unique_chords,
-        total = profile.chord_count,
-        tonic = profile.function_counts.tonic,
-        pred = profile.function_counts.predominant,
-        dom = profile.function_counts.dominant,
-        other = profile.function_counts.other
-    );
-    match &profile.cadence {
-        Some(cadence) => {
-            let _ = writeln!(
-                out,
-                "  Cadence: {pattern} ({desc}, conf {conf:.0}%).",
-                pattern = cadence.pattern,
-                desc = cadence.description,
-                conf = cadence.confidence * 100.0
-            );
-        }
-        None => {
-            let _ = writeln!(out, "  Cadence: none detected.");
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct MidiFileSummary {
-    pub file: String,
-    pub size_bytes: u64,
-    pub header_format: Option<u16>,
-    pub declared_tracks: Option<u16>,
-    pub detected_tracks: usize,
-    pub ticks_per_quarter: Option<u16>,
-    pub is_standard_midi: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MidiDiffReport {
-    pub left: MidiFileSummary,
-    pub right: MidiFileSummary,
-    pub size_delta: i64,
-    pub track_delta: i32,
-    pub commentary: Vec<String>,
-}
-
-impl MidiDiffReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "MIDI diff — size Δ {size} bytes, track Δ {tracks}.",
-            size = self.size_delta,
-            tracks = self.track_delta
-        );
-        render_midi_side(&mut out, "Left", &self.left);
-        render_midi_side(&mut out, "Right", &self.right);
-        if !self.commentary.is_empty() {
-            let _ = writeln!(&mut out);
-            for note in &self.commentary {
-                let _ = writeln!(&mut out, "- {note}");
-            }
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct ScalePitchClassProjection {
-    pub degree: usize,
-    pub pitch_class: u8,
-    pub index: i32,
-    pub label: Option<String>,
-    pub frequency_hz: f32,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PitchClassMapEntry {
-    pub pitch_class: u8,
-    pub occupied: bool,
-    pub degree: Option<usize>,
-    pub label: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ModulatoryPathSummary {
-    pub rotation: usize,
-    pub mode_name: Option<String>,
-    pub root_index: i32,
-    pub root_label: Option<String>,
-    pub pivot_pitch_classes: Vec<u8>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ScaleMapReport {
-    pub system: String,
-    pub root_index: i32,
-    pub root_label: Option<String>,
-    pub scale: String,
-    pub members: Vec<ScalePitchClassProjection>,
-    pub pitch_class_map: Vec<PitchClassMapEntry>,
-    pub modulatory_paths: Vec<ModulatoryPathSummary>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct InterpolatedPoint {
-    pub time: f32,
-    pub value: f32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct InterpolationContext {
-    pub curve: String,
-    pub samples: usize,
-}
-
-#[derive(Debug, Serialize)]
-pub struct InterpolatedEnvelopeReport {
-    pub context: InterpolationContext,
-    pub unit: String,
-    pub anchors: Vec<InterpolatedPoint>,
-    pub samples: Vec<InterpolatedPoint>,
-}
-
-impl InterpolatedEnvelopeReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Interpolation ({unit}) — curve {curve}, {count} anchors, {samples} samples.",
-            unit = self.unit,
-            curve = self.context.curve,
-            count = self.anchors.len(),
-            samples = self.samples.len()
-        );
-        let _ = writeln!(&mut out, "Anchors:");
-        for anchor in &self.anchors {
-            let _ = writeln!(
-                &mut out,
-                "  t={time:>5.2} → {value:>7.3}",
-                time = anchor.time,
-                value = anchor.value
-            );
-        }
-        let _ = writeln!(&mut out, "Samples:");
-        for point in &self.samples {
-            let _ = writeln!(
-                &mut out,
-                "  t={time:>5.2} → {value:>7.3}",
-                time = point.time,
-                value = point.value
-            );
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct VelocityEnvelopeReport {
-    pub context: InterpolationContext,
-    pub anchors: Vec<InterpolatedPoint>,
-    pub samples: Vec<InterpolatedPoint>,
-    pub min_value: i32,
-    pub max_value: i32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ScaleSearchReport {
-    pub system: String,
-    pub criteria: Vec<u8>,
-    pub match_count: usize,
-    pub matches: Vec<ScaleSearchMatch>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ScaleSearchMatch {
-    pub scale: String,
-    pub root_index: i32,
-    pub root_label: String,
-}
-
-impl ScaleSearchReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Scale search in {system}: {count} match(es) for pcs {pcs:?}.",
-            system = self.system,
-            count = self.match_count,
-            pcs = self.criteria
-        );
-        for entry in &self.matches {
-            let _ = writeln!(
-                &mut out,
-                "  - {scale} rooted at {label} ({index}).",
-                scale = entry.scale,
-                label = entry.root_label,
-                index = entry.root_index
-            );
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChordSearchReport {
-    pub system: String,
-    pub criteria: Vec<u8>,
-    pub voicing: String,
-    pub match_count: usize,
-    pub matches: Vec<ChordSearchMatch>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChordSearchMatch {
-    pub scale: String,
-    pub degree: usize,
-    pub numeral: String,
-    pub root_label: String,
-    pub pitch_classes: Vec<u8>,
-}
-
-impl ChordSearchReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Chord search ({voicing}) in {system}: {count} match(es) for pcs {pcs:?}.",
-            voicing = self.voicing,
-            system = self.system,
-            count = self.match_count,
-            pcs = self.criteria
-        );
-        for entry in &self.matches {
-            let _ = writeln!(
-                &mut out,
-                "  - {scale} degree {degree} ({numeral}) root {root}, pcs {pcs:?}.",
-                scale = entry.scale,
-                degree = entry.degree,
-                numeral = entry.numeral,
-                root = entry.root_label,
-                pcs = entry.pitch_classes
-            );
-        }
-        out
-    }
-}
-
-impl VelocityEnvelopeReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Velocity interpolation [{min}..{max}] — curve {curve}, {count} anchors.",
-            min = self.min_value,
-            max = self.max_value,
-            curve = self.context.curve,
-            count = self.anchors.len()
-        );
-        let _ = writeln!(&mut out, "Anchors:");
-        for anchor in &self.anchors {
-            let _ = writeln!(
-                &mut out,
-                "  t={time:>5.2} → {value:>6.1}",
-                time = anchor.time,
-                value = anchor.value
-            );
-        }
-        let _ = writeln!(&mut out, "Samples:");
-        for point in &self.samples {
-            let _ = writeln!(
-                &mut out,
-                "  t={time:>5.2} → {value:>6.1}",
-                time = point.time,
-                value = point.value
-            );
-        }
-        out
-    }
-}
-
-impl ScaleMapReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let root_label = self
-            .root_label
-            .as_deref()
-            .map(|label| format!(" ({label})"))
-            .unwrap_or_default();
-        let _ = writeln!(
-            &mut out,
-            "Scale map for {scale} in {system}, root {root}{label}.",
-            scale = self.scale,
-            system = self.system,
-            root = self.root_index,
-            label = root_label
-        );
-        let _ = writeln!(&mut out, "Pitch-class layout:");
-        for entry in &self.pitch_class_map {
-            let marker = if entry.occupied { '●' } else { '·' };
-            if let Some(degree) = entry.degree {
-                let lbl = entry.label.as_deref().unwrap_or("—");
-                let _ = writeln!(
-                    &mut out,
-                    "  pc {pc:>2}: {marker} degree {degree}, label {label}",
-                    pc = entry.pitch_class,
-                    marker = marker,
-                    degree = degree,
-                    label = lbl
-                );
-            } else {
-                let _ = writeln!(
-                    &mut out,
-                    "  pc {pc:>2}: {marker}",
-                    pc = entry.pitch_class,
-                    marker = marker
-                );
-            }
-        }
-        if !self.modulatory_paths.is_empty() {
-            let _ = writeln!(&mut out);
-            let _ = writeln!(&mut out, "Modulatory paths:");
-            for path in &self.modulatory_paths {
-                let mode = path.mode_name.as_deref().unwrap_or("(unknown mode)");
-                let pivots = if path.pivot_pitch_classes.is_empty() {
-                    "none".into()
-                } else {
-                    format!("{:?}", path.pivot_pitch_classes)
-                };
-                let root_label = path
-                    .root_label
-                    .as_deref()
-                    .map(|label| format!(" ({label})"))
-                    .unwrap_or_default();
-                let _ = writeln!(
-                    &mut out,
-                    "  rot {rot}: root {root}{label}, mode {mode}, pivot pcs {pivots}.",
-                    rot = path.rotation,
-                    root = path.root_index,
-                    label = root_label,
-                    mode = mode,
-                    pivots = pivots
-                );
-            }
-        }
-        out
-    }
-}
-
-fn render_midi_side(out: &mut String, label: &str, summary: &MidiFileSummary) {
-    let _ = writeln!(
-        out,
-        "{label}: {file} ({size} bytes, fmt {fmt:?}, declared {declared:?}, detected {detected}).",
-        label = label,
-        file = summary.file,
-        size = summary.size_bytes,
-        fmt = summary.header_format,
-        declared = summary.declared_tracks,
-        detected = summary.detected_tracks
-    );
-    if let Some(ticks) = summary.ticks_per_quarter {
-        let _ = writeln!(out, "  TPQ: {ticks}.");
-    }
-    let _ = writeln!(
-        out,
-        "  Standard MIDI header: {status}.",
-        status = if summary.is_standard_midi {
-            "yes"
-        } else {
-            "no"
-        }
-    );
-}
-
-#[derive(Debug, Serialize)]
-pub struct ProgressionScoreReport {
-    pub progression: Vec<String>,
-    pub total_chords: usize,
-    pub unique_chords: usize,
-    pub function_counts: FunctionCounts,
-    pub cadence: Option<CadenceSummary>,
-    pub coverage_score: f32,
-    pub cadence_score: f32,
-    pub variety_score: f32,
-    pub total_score: f32,
-    pub commentary: Vec<String>,
-    pub key_hint: Option<String>,
-}
-
-impl ProgressionScoreReport {
-    pub fn render_text(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(
-            &mut out,
-            "Progression score: {total:.1}/100 ({unique} unique / {total_chords} total).",
-            total = self.total_score,
-            unique = self.unique_chords,
-            total_chords = self.total_chords
-        );
-        let _ = writeln!(
-            &mut out,
-            "Function balance — tonic {tonic}, predominant {pred}, dominant {dom}, other {other}.",
-            tonic = self.function_counts.tonic,
-            pred = self.function_counts.predominant,
-            dom = self.function_counts.dominant,
-            other = self.function_counts.other
-        );
-        let _ = writeln!(
-            &mut out,
-            "Coverage {coverage:.0}% · Cadence {cadence:.0}% · Variety {variety:.0}%.",
-            coverage = self.coverage_score * 100.0,
-            cadence = self.cadence_score * 100.0,
-            variety = self.variety_score * 100.0
-        );
-        match &self.cadence {
-            Some(cadence) => {
-                let _ = writeln!(
-                    &mut out,
-                    "Cadence detected: {pattern} ({desc}, confidence {conf:.0}%).",
-                    pattern = cadence.pattern,
-                    desc = cadence.description,
-                    conf = cadence.confidence * 100.0
-                );
-            }
-            None => {
-                let _ = writeln!(&mut out, "Cadence detected: none.");
-            }
-        }
-        if let Some(key) = &self.key_hint {
-            let _ = writeln!(&mut out, "Context key hint: {key}.");
-        }
-        if !self.commentary.is_empty() {
-            let _ = writeln!(&mut out);
-            for note in &self.commentary {
-                let _ = writeln!(&mut out, "- {note}");
-            }
-        }
-        out
-    }
-}
-
-#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MelodyScoreReport {
     pub note_count: usize,
     pub ambitus: Ambitus,
@@ -1487,6 +330,72 @@ impl MelodyScoreReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ProgressionScoreReport {
+    pub progression: Vec<String>,
+    pub total_chords: usize,
+    pub unique_chords: usize,
+    pub function_counts: FunctionCounts,
+    pub cadence: Option<crate::reports::analysis::CadenceSummary>,
+    pub coverage_score: f32,
+    pub cadence_score: f32,
+    pub variety_score: f32,
+    pub total_score: f32,
+    pub commentary: Vec<String>,
+    pub key_hint: Option<String>,
+}
+
+impl ProgressionScoreReport {
+    pub fn render_text(&self) -> String {
+        let mut out = String::new();
+        let _ = writeln!(
+            &mut out,
+            "Progression score: {total:.1}/100 ({unique} unique / {count} total).",
+            total = self.total_score,
+            unique = self.unique_chords,
+            count = self.total_chords
+        );
+        let _ = writeln!(
+            &mut out,
+            "Function balance — tonic {tonic}, predominant {pred}, dominant {dom}, other {other}.",
+            tonic = self.function_counts.tonic,
+            pred = self.function_counts.predominant,
+            dom = self.function_counts.dominant,
+            other = self.function_counts.other
+        );
+        let _ = writeln!(
+            &mut out,
+            "Coverage {cov:.0}% · Cadence {cad:.0}% · Variety {var:.0}%.",
+            cov = self.coverage_score * 100.0,
+            cad = self.cadence_score * 100.0,
+            var = self.variety_score * 100.0
+        );
+        if let Some(cad) = &self.cadence {
+            let _ = writeln!(
+                &mut out,
+                "Cadence detected: {pattern} ({desc}, {conf:.0}%).",
+                pattern = cad.pattern,
+                desc = cad.description,
+                conf = cad.confidence * 100.0
+            );
+        } else {
+            let _ = writeln!(&mut out, "Cadence detected: none.");
+        }
+        if let Some(key) = &self.key_hint {
+            let _ = writeln!(&mut out, "Context key hint: {key}.");
+        }
+        let _ = writeln!(&mut out);
+        if !self.commentary.is_empty() {
+            for note in &self.commentary {
+                let _ = writeln!(&mut out, "- {note}");
+            }
+        }
+        out
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ChordScoreReport {
     pub system: String,
     pub note_count: usize,
@@ -1538,6 +447,7 @@ impl ChordScoreReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct StaffRenderReport {
     pub system: String,
     pub unicode: bool,
@@ -1579,6 +489,7 @@ impl StaffRenderReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PianoRollRenderReport {
     pub system: String,
     pub width: usize,
@@ -1617,6 +528,7 @@ impl PianoRollRenderReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MelodyValidationReport {
     pub system: String,
     pub scale: String,
@@ -1696,6 +608,7 @@ impl MelodyValidationReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct InvalidMelodyNote {
     pub position: usize,
     pub note_index: i32,
@@ -1703,6 +616,7 @@ pub struct InvalidMelodyNote {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct LeapViolation {
     pub position: usize,
     pub from: i32,
@@ -1711,6 +625,7 @@ pub struct LeapViolation {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProgressionValidationReport {
     pub progression: Vec<String>,
     pub chord_count: usize,
@@ -1718,7 +633,7 @@ pub struct ProgressionValidationReport {
     pub invalid_chords: Vec<InvalidProgressionToken>,
     pub duplicate_positions: Vec<usize>,
     pub function_counts: FunctionCounts,
-    pub cadence: Option<CadenceSummary>,
+    pub cadence: Option<crate::reports::analysis::CadenceSummary>,
 }
 
 impl ProgressionValidationReport {
@@ -1788,6 +703,7 @@ impl ProgressionValidationReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct InvalidProgressionToken {
     pub position: usize,
     pub token: String,
@@ -1795,6 +711,7 @@ pub struct InvalidProgressionToken {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TuningValidationReport {
     pub system: String,
     pub requested_indices: Vec<i32>,
@@ -1846,6 +763,7 @@ impl TuningValidationReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TuningSampleRow {
     pub index: i32,
     pub frequency_hz: f32,
@@ -1853,6 +771,7 @@ pub struct TuningSampleRow {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MonotonicViolation {
     pub lower_index: i32,
     pub lower_frequency_hz: f32,
@@ -1861,6 +780,7 @@ pub struct MonotonicViolation {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MidiAnalysisReport {
     pub file: String,
     pub size_bytes: u64,
@@ -1873,6 +793,7 @@ pub struct MidiAnalysisReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PitchIndexToFrequency {
     pub system: String,
     pub index: i32,
@@ -1894,6 +815,7 @@ impl PitchIndexToFrequency {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FrequencyToIndexReport {
     pub system: String,
     pub input_frequency_hz: f32,
@@ -1922,6 +844,7 @@ impl FrequencyToIndexReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TemperamentRemapReport {
     pub from_system: String,
     pub to_system: String,
@@ -1963,6 +886,7 @@ impl TemperamentRemapReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TemperamentMappingRow {
     pub source_index: i32,
     pub source_label: Option<String>,
@@ -1974,6 +898,7 @@ pub struct TemperamentMappingRow {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MidiCsvConversionReport {
     pub direction: MidiConversionDirection,
     pub source: String,
@@ -2062,12 +987,14 @@ impl MidiCsvConversionReport {
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MidiConversionDirection {
     MidiToCsv,
     CsvToMidi,
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MidiCsvRow {
     pub track: u16,
     pub channel: u8,
@@ -2224,6 +1151,7 @@ fn roman_numeral(degree: usize) -> String {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MelodyExtrapolationReport {
     pub system: String,
     pub input_count: usize,
@@ -2278,6 +1206,7 @@ impl MelodyExtrapolationReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MelodyPrediction {
     pub pitch_class: u8,
     pub suggested_index: i32,
@@ -2287,6 +1216,7 @@ pub struct MelodyPrediction {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ChordExtrapolationReport {
     pub input_count: usize,
     pub input_progression: Vec<String>,
@@ -2341,12 +1271,14 @@ impl ChordExtrapolationReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ChordPrediction {
     pub chord: String,
     pub probability: f32,
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileReport {
     pub input_type: String,
     pub event_count: usize,
@@ -2415,6 +1347,7 @@ impl ProfileReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PitchRangeReport {
     pub min_pitch: Option<u8>,
     pub max_pitch: Option<u8>,
@@ -2424,6 +1357,7 @@ pub struct PitchRangeReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TimingReport {
     pub min_ioi_sec: Option<f64>,
     pub max_ioi_sec: Option<f64>,
@@ -2434,6 +1368,7 @@ pub struct TimingReport {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct EstimateReport {
     pub input_type: String,
     pub tempo_bpm: Option<f64>,

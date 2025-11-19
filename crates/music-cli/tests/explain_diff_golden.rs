@@ -1,7 +1,7 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use serde_json::Value;
 
-const MELODY_TEXT: &str = "Melody diff (12tet) — shared pcs [0], distance 66.7%.\nContext key: Cmaj.\nLeft: 3 notes, 3 unique pcs, ambitus 4 st.\nRight: 3 notes, 3 unique pcs, ambitus 7 st.\nLeft-only pcs: [2, 4].\nRight-only pcs: [5, 7].\n\n- Melodies have markedly different pitch distributions\n- Ambitus differs: left 4 st, right 7 st\n\n";
+const MELODY_TEXT: &str = "Melody diff (12tet) — shared pcs [0], distance 66.7%.\nContext key: Cmaj.\nLeft — notes 3, distinct pcs 3, ambitus 4 st (lowest 60, highest 64).\n  Histogram:\n    pc  0: 1\n    pc  2: 1\n    pc  4: 1\nRight — notes 3, distinct pcs 3, ambitus 7 st (lowest 60, highest 67).\n  Histogram:\n    pc  0: 1\n    pc  5: 1\n    pc  7: 1\nLeft-only pcs: [2, 4].\nRight-only pcs: [5, 7].\n\n  • Melodies have markedly different pitch distributions\n  • Ambitus differs: left 4 st, right 7 st\n\n";
 
 const MELODY_JSON: &str = r#"{
   "system": "12tet",
@@ -71,7 +71,7 @@ const MELODY_JSON: &str = r#"{
 }
 "#;
 
-const PROG_TEXT: &str = "Progression diff — shared 2, left unique 1, right unique 1.\nContext key: Cmaj.\nLeft: 3/4 unique chords, tonic 2, predominant 1, dominant 1, other 0.\n  Cadence: V–I (Authentic cadence, conf 92%).\nRight: 3/3 unique chords, tonic 1, predominant 1, dominant 1, other 0.\n  Cadence: none detected.\nShared chords: I, V.\nLeft-only chords: II.\nRight-only chords: IV.\n\n- Left progression cadences while right does not\n\n";
+const PROG_TEXT: &str = "Context key: Cmaj.\nLeft progression (4 chords, 3 unique):\n  I → ii → V → I\nRight progression (3 chords, 3 unique):\n  I → IV → V\nShared chords: I, V\nLeft-only: II\nRight-only: IV\n\n  • Left progression cadences while right does not\n\n";
 
 const PROG_JSON: &str = r#"{
   "key_hint": "Cmaj",

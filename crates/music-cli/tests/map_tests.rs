@@ -17,9 +17,9 @@ fn map_scale_with_modulations() {
         .assert()
         .success()
         .stdout(predicates::str::contains("Modulatory paths:"))
-        .stdout(predicates::str::contains("rot 1:"))
-        .stdout(predicates::str::contains("rot 2:"))
-        .stdout(predicates::str::contains("rot 3:"));
+        .stdout(predicates::str::contains("Rotation 1:"))
+        .stdout(predicates::str::contains("Rotation 2:"))
+        .stdout(predicates::str::contains("Rotation 3:"));
 }
 
 #[test]

@@ -6,10 +6,11 @@ use music_engine::prelude::*;
 use crate::{
     cli::{AnalyzeChordsArgs, AnalyzeCommand, AnalyzeMelodyArgs, AnalyzeMidiArgs},
     format::OutputFormat,
-    responses::{
+    reports::analysis::{
         Ambitus, CadenceSummary, ChordAnalysisReport, FunctionCounts, KeyHypothesis,
-        MelodyAnalysisReport, MidiAnalysisReport, PitchClassBin, TensionMetrics,
+        MelodyAnalysisReport, PitchClassBin, TensionMetrics,
     },
+    responses::MidiAnalysisReport,
 };
 
 pub(crate) const MAJOR_PATTERN: [u8; 7] = [0, 2, 4, 5, 7, 9, 11];

@@ -1,6 +1,6 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 
-const SCALE_TEXT: &str = "Scale map for Major in 12tet, root 60 (12-TET(60)).\nPitch-class layout:\n  pc  0: ● degree 1, label 12-TET(60)\n  pc  1: ·\n  pc  2: ● degree 2, label 12-TET(62)\n  pc  3: ·\n  pc  4: ● degree 3, label 12-TET(64)\n  pc  5: ● degree 4, label 12-TET(65)\n  pc  6: ·\n  pc  7: ● degree 5, label 12-TET(67)\n  pc  8: ·\n  pc  9: ● degree 6, label 12-TET(69)\n  pc 10: ·\n  pc 11: ● degree 7, label 12-TET(71)\n\nModulatory paths:\n  rot 1: root 62 (12-TET(62)), mode Dorian, pivot pcs [0, 2, 4, 5, 7, 9, 11].\n  rot 2: root 64 (12-TET(64)), mode Phrygian, pivot pcs [0, 2, 4, 5, 7, 9, 11].\n\n";
+const SCALE_TEXT: &str = "Scale map for Major in 12tet, root 60 (12-TET(60)).\nPitch-class layout:\n  pc  0 ● degree 1 (12-TET(60))\n  pc  1 ·\n  pc  2 ● degree 2 (12-TET(62))\n  pc  3 ·\n  pc  4 ● degree 3 (12-TET(64))\n  pc  5 ● degree 4 (12-TET(65))\n  pc  6 ·\n  pc  7 ● degree 5 (12-TET(67))\n  pc  8 ·\n  pc  9 ● degree 6 (12-TET(69))\n  pc 10 ·\n  pc 11 ● degree 7 (12-TET(71))\n\nModulatory paths:\n  Rotation 1: Dorian, root 62 (12-TET(62)), pivots [0, 2, 4, 5, 7, 9, 11].\n  Rotation 2: Phrygian, root 64 (12-TET(64)), pivots [0, 2, 4, 5, 7, 9, 11].\n\n";
 
 const SCALE_JSON: &str = r#"{
   "system": "12tet",

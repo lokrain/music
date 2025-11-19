@@ -1,3 +1,9 @@
+//! Core implementation of the [`Interval`] type.
+//!
+//! This module provides the main [`Interval`] struct and its methods for creating, manipulating,
+//! and applying intervals to pitches. Intervals can be constructed from explicit ratios or derived
+//! from pitch pairs, and they support operations like inversion, exponentiation, and composition.
+
 use core::fmt;
 
 #[cfg(feature = "serde")]

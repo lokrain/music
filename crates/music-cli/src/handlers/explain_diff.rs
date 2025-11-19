@@ -8,10 +8,12 @@ use crate::{
         ExplainDiffCommand, ExplainDiffMelodyArgs, ExplainDiffMidiArgs, ExplainDiffProgressionArgs,
     },
     format::OutputFormat,
-    responses::{
-        Ambitus, FunctionCounts, MelodyDiffReport, MelodyProfileSummary, MidiDiffReport,
-        MidiFileSummary, PitchClassBin, ProgressionDiffReport, ProgressionProfileSummary,
+    reports::analysis::{Ambitus, PitchClassBin},
+    reports::diff::{
+        MelodyDiffReport, MelodyProfileSummary, MidiDiffReport, MidiFileSummary,
+        ProgressionDiffReport, ProgressionProfileSummary,
     },
+    responses::FunctionCounts,
 };
 
 use super::analyze::{FunctionRole, classify_function, detect_cadence, normalize_roman};
@@ -158,7 +160,11 @@ impl MelodyProfile {
         MelodyProfileSummary {
             note_count: self.note_count,
             distinct_pitch_classes: self.histogram.iter().filter(|count| **count > 0).count(),
-            ambitus: self.ambitus,
+            ambitus: Ambitus {
+                lowest: self.ambitus.lowest,
+                highest: self.ambitus.highest,
+                span: self.ambitus.span,
+            },
             histogram: histogram_bins(&self.histogram),
         }
     }

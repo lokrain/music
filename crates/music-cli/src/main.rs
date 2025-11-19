@@ -7,6 +7,7 @@ use music_engine::MusicEngine;
 mod cli;
 mod format;
 mod handlers;
+mod reports; // new module for split report structs
 mod responses;
 mod theory;
 
@@ -15,10 +16,13 @@ use crate::{
     handlers::{
         handle_analyze, handle_convert, handle_estimate, handle_explain, handle_explain_diff,
         handle_expose, handle_extrapolate, handle_generate, handle_inspect, handle_interpolate,
-        handle_list, handle_map, handle_placeholder, handle_profile, handle_render, handle_score,
+        handle_list, handle_map, handle_profile, handle_render, handle_resolve, handle_score,
         handle_search, handle_suggest, handle_validate,
     },
 };
+
+#[cfg(feature = "schema")]
+use crate::handlers::export_schemas;
 
 fn main() {
     if let Err(error) = run() {
@@ -54,6 +58,8 @@ fn dispatch(engine: &MusicEngine, cli: Cli) -> Result<()> {
         Command::Interpolate { command } => handle_interpolate(engine, format, command),
         Command::Search { command } => handle_search(engine, format, command),
         Command::Estimate { command } => handle_estimate(engine, format, command),
-        Command::Resolve => handle_placeholder("resolve"),
+        Command::Resolve { command } => handle_resolve(engine, format, command),
+        #[cfg(feature = "schema")]
+        Command::ExportSchemas { output_dir } => export_schemas(&output_dir),
     }
 }

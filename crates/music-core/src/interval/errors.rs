@@ -1,3 +1,8 @@
+//! Error types for interval operations.
+//!
+//! This module defines error types that can occur when constructing or manipulating intervals,
+//! including validation failures for ratios and errors when deriving intervals from pitch pairs.
+
 use core::fmt;
 
 use crate::pitch::PitchError;
