@@ -1,0 +1,12 @@
+[package]
+name = "music-engraving"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Engraving primitives: glyph identifiers, stem directions, layout geometry."
+repository = "https://github.com/lokrain/music"
+keywords = ["music", "engraving", "notation"]
+categories = ["multimedia::audio"]
+
+[dependencies]

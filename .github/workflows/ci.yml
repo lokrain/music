@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: rustfmt
+        run: cargo fmt --check
+      - name: clippy
+        run: RUSTC_WRAPPER= cargo clippy --all-targets --all-features -- -W clippy::pedantic -W clippy::unwrap_used -W clippy::expect_used
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo nextest
+        run: RUSTC_WRAPPER= cargo nextest run --workspace
+  coverage:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.0
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v2
+      - name: Coverage (theory/time/notation)
+        run: |
+          cargo llvm-cov --locked \
+            -p music-acoustic \
+            -p music-theory \
+            -p music-time \
+            -p music-articulation \
+            -p music-notation \
+            -p music-engraving \
+            --fail-under-lines 95
+      - name: Coverage (planner & score)
+        run: |
+          cargo llvm-cov --locked --no-clean \
+            -p music-score \
+            --fail-under-lines 90

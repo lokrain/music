@@ -1,93 +1,87 @@
-# Copilot instructions for the `music` workspace
+# Copilot instructions for the `music` workspace (v1)
 
-## Architecture snapshot
-- This is a multi-crate Rust workspace; most shared logic lives in `crates/music-core`. Other crates (analysis, engine, CLI, FFI, etc.) consume the `music-core` APIs, so prefer adding reusable primitives there first.
-- `music-core` models pitches in four layers: `system.rs` defines `PitchSystemId` + `PitchSystem`; `registry.rs` hosts `TuningRegistry` for lookups; `pitch.rs` wraps literal/abstract pitches plus labels & errors; `interval.rs` stores ratios/step deltas for cross-system transposition.
-- Temperaments (12/24 TET, etc.) are in `crates/music-core/src/systems/**` and usually compose `EqualTemperament`. New systems should implement `PitchSystem` + re-export through `systems/mod.rs` and, if widely used, the prelude.
+These instructions reflect the v1 repository plan from the discovery, specification, and technical implementation documents (01, 02, 03). Treat this as the authoritative guide for how to design, structure, test, and land changes.
 
-## Key patterns & expectations
-- Always validate external identifiers with `PitchSystemId::try_new` or `FromStr`; the infallible `new`/`from` helpers are for trusted literals.
-- The registry owns `Arc<dyn PitchSystem>` values. Prefer the helper APIs (`register_system`, `try_register_system`, `with_system`, `get_or_insert_with`, `resolve_*_str`) instead of accessing the map directly.
-- Intervals capture both frequency ratios and optional step deltas. When applying an interval, the result stays abstract only if the stored system matches the target pitch; otherwise it produces a literal frequency.
-- `Pitch` APIs must preserve the literal/abstract distinction. Every method resolving frequencies takes a `&TuningRegistry` and returns `PitchError`. Keep literal validation centralized via `validate_literal_frequency`.
-- Exposed symbols are re-exported from `lib.rs` and `prelude.rs`. Whenever you add new core types (errors, helpers, systems) confirm they’re exported consistently so downstream crates compile without explicit module paths.
-- Feature flags: default build enables `std`; `serde` is optional—gate derives/uses with `#[cfg(feature = "serde")]` just like existing modules.
+## Repository shape (monorepo)
+- Rust workspace (edition 2024, resolver = 3)
+- Top-level structure:
+  - Cargo.toml (workspace + lint settings)
+  - rust-toolchain.toml (pinned toolchain)
+  - .cargo/config.toml (resolver=3, shared flags)
+  - crates/
+    - music-core (theory + timing)
+    - music-structure (phrases/sections/graph, templates)
+    - music-analysis (harmonic + melodic engine, planner)
+    - music-api (HTTP/WS/SSE API, models, persistence)
+    - music-cli (local tool for dev/bench/testing)
+  - tests/ (workspace-level integration as needed)
 
-## Testing & workflows
-- Fast unit/integration loop for the core crate:
-  ```bash
-  cargo test -p music-core
-  ```
-- Workspace-wide QA (preferred before PRs) piggybacks on the documented tools:
-  ```bash
-  cargo nextest run --workspace --all-features
-  cargo llvm-cov --workspace --all-features --fail-under-lines 95
-  ```
-- Keep files formatted via `cargo fmt`. Clippy is enforced at CI with pedantic + nursery + `unwrap/expect` denies, so avoid those patterns or gate them with clear justifications.
+## Crate responsibilities
+- music-core: pitch/interval/scale/chord/key/meter/tuning, raw/grid timing, shared errors.
+- music-structure: phrase/section modeling, StructureGraph, template DSL + compile + registry.
+- music-analysis: feature extraction, style rule-graph, beam-search planner, melody engine, explainability capture/render.
+- music-api: REST + streaming endpoints, models, simple run persistence.
+- music-cli: entrypoints to exercise the stack locally; golden tests and benches.
 
-## Examples & references
-- See `crates/music-core/tests/registry_tests.rs` for registry ergonomics, `tests/pitch_tests.rs` for pitch/serde behaviors, and `tests/interval_tests.rs` for interval round-trips.
-- The workspace README documents tooling expectations, required Rust toolchain (`rust-toolchain.toml`), and VS Code tasks—review it when adding new developer flows.
+## Module layout expectations (per crate)
+- lib.rs as entrypoint; clear feature flags; re-export public API via crate prelude.
+- Split modules to keep files around 300–400 LOC. Prefer submodules to avoid god-files.
+- Colocate unit tests next to source or under a mirrored tests tree (see Test Layout).
 
-Please ping the maintainers if any part of this guide feels incomplete so we can refine it for future agents.
+## Quality guardrails (strict)
+- Deny on warnings, unused imports, and dead code in application crates.
+- No unwrap/expect in non-test code; introduce typed error enums and propagate.
+- Public API must be documented with rustdoc comments and examples where helpful.
+- Maintain single source of truth: no duplicated logic; refactor shared helpers.
 
-## Task Execution Protocol (Agent Augmentation)
+## Testing & coverage
+- Fast loop:
+  - cargo nextest run --workspace --all-features
+- Coverage gate:
+  - cargo llvm-cov --workspace --all-features --fail-under-lines 95
+- Golden tests: CLI and API text/JSON locked outputs for regressions.
+- Fuzz/property tests for math-heavy core (intervals, pitch math, conversions).
 
-These workspace-specific execution rules refine how agents should pick, start, and finish tasks, ensuring consistency with the project's QA and maintainability standards.
+## Performance & correctness
+- Favor iterator-based tight loops, avoid unnecessary allocation; consider Arc for shared state.
+- Keep algorithms deterministic for identical inputs/config.
+- Benchmarks for hot paths (core math, planner inner loops, end-to-end where feasible).
 
-### Starting a Task
-1. Always select the earliest (top-most) item in `TODO.md` whose **Status** is `TODO`.
-2. Immediately change its status to `IN_PROGRESS` in `TODO.md` before writing code.
-3. Create or update an internal action checklist (using the todo list management tool) covering implementation, tests, coverage, refactors, and documentation updates.
+## Explainability
+- All major decision points in analysis/planner expose light-weight capture hooks.
+- Rendering supports modes: none / brief / detailed / debug (debug may be feature-gated).
+
+## Task Execution Protocol (Agent)
+Follow this mini-Jira flow strictly to ensure consistent delivery.
+
+### Start a task
+1. Pick the earliest TODO with Status=TODO in `TODO.md`.
+2. Immediately flip it to IN_PROGRESS.
+3. Create/update an internal checklist (tests, coverage, refactors, docs).
 
 ### Definition of Done (DoD)
-To mark a task `DONE`, ALL conditions must hold:
-1. Feature/functionality works end-to-end (manual spot check + automated tests).
-2. Test coverage for the affected crate/module ≥95% line coverage (run `cargo llvm-cov --workspace --all-features --fail-under-lines 95`). If new code lowers coverage, add tests until threshold passes.
-3. Any new sub-work discovered is appended to `TODO.md` (new tasks with clear status).
-4. Notes/remarks (design decisions, trade-offs, follow-ups) appended to the relevant task body in `TODO.md`.
-5. No source file exceeds 300 lines after changes. If exceeded:
-  - Split into logical submodules under the same crate.
-  - Mirror the split with matching test files (see Test Layout below).
-  - Add a refactor task to `TODO.md` if split cannot be completed immediately.
-6. Tests reside in a `src/tests/` (or crate-local) structure mirroring source hierarchy: each `foo.rs` has a `foo_test.rs` sibling (or module-level `mod tests` inside `foo.rs` only when trivial). Integration tests may still live under `tests/` for CLI end-to-end flows, but unit/business logic MUST have colocated mirrors.
-7. Single source of truth: duplicated business logic must be refactored. If duplication is detected but cannot be resolved instantly, add a refactor task to `TODO.md`.
+1. Functionality works (manual spot check + automated tests).
+2. Coverage ≥ 95% lines (workspace) via cargo llvm-cov gate.
+3. All discovered sub-work appended to TODO.md with clear status.
+4. Design notes/trade-offs captured in the task body under TODO.md.
+5. No file exceeds ~300–400 LOC; split into logical submodules if necessary.
+6. Tests colocated and mirror source hierarchy; integration tests for CLI/API remain under crate-level tests/ when appropriate.
+7. Remove duplication; if blocked, add a refactor task and link it.
 
-### Test Layout Rules
-* For a module `src/bar/baz.rs`, create `src/bar/baz_test.rs` containing focused unit tests.
-* Avoid large omnibus test files covering multiple modules.
-* End-to-end / CLI golden tests remain under `crates/music-cli/tests/`.
+### Test layout rules
+- For `src/foo/bar.rs`, create `tests/foo/bar_test.rs` for focused unit tests; avoid omnibus.
+- End-to-end: CLI/API under `crates/music-cli/tests/` or `crates/music-api/tests/`.
 
-### Aborting / Cancelling Work
-If a task is abandoned (blocked, superseded, invalid):
-1. Change its status to `BLOCKED` or `CANCELLED` in `TODO.md` with a brief rationale appended under the task body.
-2. Add any derivative tasks if partial progress created new artifacts needing cleanup.
+### Failure handling
+- If a test or coverage gate fails: iterate with focused fixes.
+- If blocked by structure, create a follow-up investigation/refactor task.
 
-### Coverage & Quality Commands
-* Full workspace: `cargo nextest run --workspace --all-features`
-* Coverage gate: `cargo llvm-cov --workspace --all-features --fail-under-lines 95`
+## Implementation phasing snapshot (v1)
+Phases are sequenced as in 03. TECHNICAL_IMPLEMENTATION_PLAN.md — Core → Structure → Templates → Analysis → Style Graph → Planner → Melody → Explainability → Orchestrator → API → CLI.
 
-### File Size Monitoring
-Use ad-hoc scanning or tooling scripts to flag files >300 lines. Prioritize splitting high-churn or multi-responsibility files first (handlers, large response renderers, composite logic).
+## Practical tips
+- Keep public re-exports tidy (`lib.rs`/prelude.rs) to avoid deep paths across crates.
+- Use feature flags consistently for optional serde and debug/trace hooks.
+- Keep file sizes in check; split early rather than late.
 
-### Refactor Guidance
-When splitting large files:
-* Preserve public API re-exports in `lib.rs` / `prelude.rs`.
-* Prefer moving pure helper functions to a private `mod util;` or into `music-core` for reuse.
-* Update tests to mirror the new file boundaries immediately.
-
-### Task Flow Cycle
-1. Pick first `TODO` → mark `IN_PROGRESS`.
-2. Implement incrementally with tests.
-3. Ensure coverage ≥95%.
-4. Enforce file-size rule.
-5. Update task with NOTES if needed → mark `DONE`.
-6. Automatically begin next `TODO` task; do not wait for user prompt.
-
-### Failure Handling
-If a test or coverage gate fails:
-* Iterate with focused fixes.
-* On persistent structural blocker, create a new refactor or investigation task.
-
----
-This protocol ensures maintainability, traceability, and consistent quality across rapid CLI feature additions.
+If anything is unclear or diverges from the three canonical docs (01, 02, 03), align with them first and add TODO entries to reconcile code with plan.

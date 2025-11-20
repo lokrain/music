@@ -1,0 +1,12 @@
+[package]
+name = "music-articulation"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Music articulation, ornament, and dynamics taxonomy shared by the workspace."
+repository = "https://github.com/lokrain/music"
+keywords = ["music", "articulation", "dynamics"]
+categories = ["multimedia::audio"]
+
+[dependencies]

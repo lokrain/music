@@ -9,4 +9,12 @@ fail-under-lines = 95
 fail-under-regions = 95
 
 [workspace]
-default-members = ["crates/music-core", "crates/music-engine", "crates/music-cli", "crates/music-theory", "crates/music-signal-core", "crates/music-analysis", "crates/music-ffi", "crates/music-playground"]
+default-members = [
+    "core/music-acoustic",
+    "core/music-theory",
+    "core/music-time",
+    "notation/music-articulation",
+    "notation/music-engraving",
+    "notation/music-notation",
+    "score/music-score",
+]
